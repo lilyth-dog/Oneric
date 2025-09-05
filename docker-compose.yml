@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:15-alpine
+    container_name: dreamtracer-postgres
+    environment:
+      POSTGRES_DB: dreamtracer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - dreamtracer-network
+
+  # Redis 캐시 및 메시지 브로커
+  redis:
+    image: redis:7-alpine
+    container_name: dreamtracer-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dreamtracer-network
+
+  # FastAPI 백엔드
+  backend:
+    build:
+      context: ./DreamTracerBackend
+      dockerfile: Dockerfile
+    container_name: dreamtracer-backend
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=dreamtracer
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-secret-key-here-change-in-production
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./DreamTracerBackend:/app
+    networks:
+      - dreamtracer-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery 워커 (AI 분석 작업)
+  celery-worker:
+    build:
+      context: ./DreamTracerBackend
+      dockerfile: Dockerfile
+    container_name: dreamtracer-celery-worker
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=dreamtracer
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./DreamTracerBackend:/app
+    networks:
+      - dreamtracer-network
+    command: celery -A app.workers.celery_app worker --loglevel=info
+
+  # Celery Beat (스케줄러)
+  celery-beat:
+    build:
+      context: ./DreamTracerBackend
+      dockerfile: Dockerfile
+    container_name: dreamtracer-celery-beat
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=dreamtracer
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./DreamTracerBackend:/app
+    networks:
+      - dreamtracer-network
+    command: celery -A app.workers.celery_app beat --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  dreamtracer-network:
+    driver: bridge

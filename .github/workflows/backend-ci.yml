@@ -1,0 +1,193 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'DreamTracerBackend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'DreamTracerBackend/**'
+      - '.github/workflows/backend-ci.yml'
+
+env:
+  PYTHON_VERSION: '3.11'
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: dreamtracer_test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dreamtracer_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('DreamTracerBackend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      working-directory: ./DreamTracerBackend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx
+
+    - name: Set up environment variables
+      working-directory: ./DreamTracerBackend
+      run: |
+        echo "POSTGRES_SERVER=localhost" >> .env
+        echo "POSTGRES_USER=postgres" >> .env
+        echo "POSTGRES_PASSWORD=postgres" >> .env
+        echo "POSTGRES_DB=dreamtracer_test" >> .env
+        echo "POSTGRES_PORT=5432" >> .env
+        echo "REDIS_URL=redis://localhost:6379" >> .env
+        echo "SECRET_KEY=test-secret-key" >> .env
+        echo "CELERY_BROKER_URL=redis://localhost:6379/0" >> .env
+        echo "CELERY_RESULT_BACKEND=redis://localhost:6379/0" >> .env
+
+    - name: Run database migrations
+      working-directory: ./DreamTracerBackend
+      run: |
+        alembic upgrade head
+
+    - name: Run tests
+      working-directory: ./DreamTracerBackend
+      run: |
+        pytest tests/ -v --cov=app --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./DreamTracerBackend/coverage.xml
+        flags: backend
+        name: backend-coverage
+
+    - name: Lint with flake8
+      working-directory: ./DreamTracerBackend
+      run: |
+        pip install flake8
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Type check with mypy
+      working-directory: ./DreamTracerBackend
+      run: |
+        pip install mypy
+        mypy app/ --ignore-missing-imports
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      working-directory: ./DreamTracerBackend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install bandit safety
+
+    - name: Run security scan with bandit
+      working-directory: ./DreamTracerBackend
+      run: |
+        bandit -r app/ -f json -o bandit-report.json || true
+
+    - name: Run safety check
+      working-directory: ./DreamTracerBackend
+      run: |
+        safety check --json --output safety-report.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          DreamTracerBackend/bandit-report.json
+          DreamTracerBackend/safety-report.json
+
+  build-and-push:
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./DreamTracerBackend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/dreamtracer-backend:latest
+          ${{ secrets.DOCKER_USERNAME }}/dreamtracer-backend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deploy to production
+      run: |
+        echo "🚀 배포 시작"
+        echo "이 단계에서는 실제 배포 로직을 구현합니다"
+        echo "- GCP Cloud Run 배포"
+        echo "- AWS ECS 배포"
+        echo "- 또는 다른 클라우드 플랫폼 배포"

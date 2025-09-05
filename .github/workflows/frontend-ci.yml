@@ -1,0 +1,135 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'DreamTracerApp/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'DreamTracerApp/**'
+      - '.github/workflows/frontend-ci.yml'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: DreamTracerApp/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./DreamTracerApp
+      run: npm ci
+
+    - name: Run TypeScript type check
+      working-directory: ./DreamTracerApp
+      run: npx tsc --noEmit
+
+    - name: Run ESLint
+      working-directory: ./DreamTracerApp
+      run: npx eslint . --ext .ts,.tsx --max-warnings 0
+
+    - name: Run Prettier check
+      working-directory: ./DreamTracerApp
+      run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json}"
+
+    - name: Run Jest tests
+      working-directory: ./DreamTracerApp
+      run: npm test -- --coverage --watchAll=false
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./DreamTracerApp/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: DreamTracerApp/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./DreamTracerApp
+      run: npm ci
+
+    - name: Build Android APK
+      working-directory: ./DreamTracerApp
+      run: |
+        npx react-native build-android --mode=release
+      env:
+        ANDROID_HOME: ${{ secrets.ANDROID_HOME }}
+        ANDROID_SDK_ROOT: ${{ secrets.ANDROID_SDK_ROOT }}
+
+    - name: Upload Android APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: DreamTracerApp/android/app/build/outputs/apk/release/app-release.apk
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: DreamTracerApp/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./DreamTracerApp
+      run: npm ci
+
+    - name: Run Detox E2E tests
+      working-directory: ./DreamTracerApp
+      run: |
+        npm run build:e2e
+        npm run test:e2e
+      env:
+        DETOX_CONFIGURATION: android.emu.debug
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build, e2e-tests]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to app stores
+      run: |
+        echo "🚀 앱스토어 배포 시작"
+        echo "이 단계에서는 실제 배포 로직을 구현합니다"
+        echo "- Google Play Store 배포"
+        echo "- Apple App Store 배포"
+        echo "- 또는 다른 배포 플랫폼"
