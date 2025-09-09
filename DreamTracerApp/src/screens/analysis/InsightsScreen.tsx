@@ -1,5 +1,6 @@
 /**
  * 인사이트 화면
+ * 디자인 가이드에 따른 "고요한 탐험" 컨셉 구현
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -8,344 +9,180 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
-import { useAnalysisStore } from '../../stores/analysisStore';
-import { EMOTION_LABELS, DREAM_TYPE_LABELS } from '../../types/dream';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { useDreamStore } from '../../stores/dreamStore';
 
 const InsightsScreen: React.FC = () => {
-  const {
-    dailyInsights,
-    dreamPatterns,
-    dreamNetwork,
-    isLoading,
-    error,
-    getDailyInsights,
-    getDreamPatterns,
-    getDreamNetwork,
-    clearError,
-  } = useAnalysisStore();
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'insights' | 'patterns' | 'network'>('insights');
+  const { goBack } = useNavigationStore();
+  const { dreams, fetchDreamStats, isLoading } = useDreamStore();
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    fetchDreamStats();
+  }, [fetchDreamStats]);
 
-  const loadInitialData = async () => {
-    try {
-      await Promise.all([
-        getDailyInsights(),
-        getDreamPatterns(30),
-        getDreamNetwork(),
-      ]);
-    } catch (error) {
-      console.error('Initial data load failed:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await loadInitialData();
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const renderInsightsTab = () => {
-    if (isLoading && !dailyInsights) {
+  const renderStats = () => {
+    if (isLoading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.loadingText}>인사이트를 생성하고 있습니다...</Text>
-        </View>
-      );
-    }
-
-    if (!dailyInsights) {
-      return (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataTitle}>인사이트가 없습니다</Text>
-          <Text style={styles.noDataText}>
-            더 많은 꿈을 기록하면 개인화된 인사이트를 받을 수 있습니다.
-          </Text>
+          <ActivityIndicator size="large" color="#FFDDA8" />
+          <Text style={styles.loadingText}>통계를 불러오고 있습니다...</Text>
         </View>
       );
     }
 
     return (
-      <ScrollView style={styles.tabContent}>
-        <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>💡 오늘의 인사이트</Text>
-          <Text style={styles.insightText}>{dailyInsights.insight}</Text>
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{dreams.length}</Text>
+          <Text style={styles.statLabel}>총 꿈 기록</Text>
         </View>
-
-        <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>🔍 발견된 패턴</Text>
-          <Text style={styles.insightText}>{dailyInsights.pattern}</Text>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>
+            {dreams.filter(d => (d.lucidity_level || 0) >= 4).length}
+          </Text>
+          <Text style={styles.statLabel}>자각몽</Text>
         </View>
-
-        <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>💭 추천사항</Text>
-          <Text style={styles.insightText}>{dailyInsights.recommendation}</Text>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>
+            {dreams.filter(d => {
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+              return new Date(d.created_at) >= oneWeekAgo;
+            }).length}
+          </Text>
+          <Text style={styles.statLabel}>이번 주</Text>
         </View>
-      </ScrollView>
+      </View>
     );
   };
 
-  const renderPatternsTab = () => {
-    if (isLoading && !dreamPatterns) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.loadingText}>패턴을 분석하고 있습니다...</Text>
-        </View>
-      );
-    }
+  const renderEmotionAnalysis = () => {
+    const emotionCounts: { [key: string]: number } = {};
+    
+    dreams.forEach(dream => {
+      if (dream.emotion_tags) {
+        dream.emotion_tags.forEach(emotion => {
+          emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+        });
+      }
+    });
 
-    if (!dreamPatterns) {
-      return (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataTitle}>패턴 데이터가 없습니다</Text>
-          <Text style={styles.noDataText}>
-            더 많은 꿈을 기록하면 패턴 분석을 받을 수 있습니다.
-          </Text>
-        </View>
-      );
-    }
+    const sortedEmotions = Object.entries(emotionCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
 
     return (
-      <ScrollView style={styles.tabContent}>
-        <View style={styles.patternCard}>
-          <Text style={styles.patternTitle}>📊 분석 기간</Text>
-          <Text style={styles.patternValue}>
-            {dreamPatterns.analysis_period} ({dreamPatterns.total_dreams}개 꿈)
-          </Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>주요 감정</Text>
+        <View style={styles.emotionContainer}>
+          {sortedEmotions.length > 0 ? (
+            sortedEmotions.map(([emotion, count], _index) => (
+              <View key={emotion} style={styles.emotionItem}>
+                <Text style={styles.emotionName}>{emotion}</Text>
+                <View style={styles.emotionBar}>
+                  <View 
+                    style={[
+                      styles.emotionBarFill, 
+                      { width: `${(count / Math.max(...sortedEmotions.map(([,c]) => c))) * 100}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.emotionCount}>{count}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>아직 충분한 데이터가 없습니다.</Text>
+          )}
         </View>
-
-        {/* 감정 패턴 */}
-        {dreamPatterns.patterns.emotions.length > 0 && (
-          <View style={styles.patternCard}>
-            <Text style={styles.patternTitle}>😊 주요 감정</Text>
-            {dreamPatterns.patterns.emotions.map((emotion, index) => (
-              <View key={index} style={styles.patternItem}>
-                <Text style={styles.patternLabel}>
-                  {EMOTION_LABELS[emotion.emotion as keyof typeof EMOTION_LABELS] || emotion.emotion}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${(emotion.count / dreamPatterns.patterns.emotions[0].count) * 100}%` }
-                    ]} 
-                  />
-                </View>
-                <Text style={styles.patternCount}>{emotion.count}회</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* 상징 패턴 */}
-        {dreamPatterns.patterns.symbols.length > 0 && (
-          <View style={styles.patternCard}>
-            <Text style={styles.patternTitle}>🔮 주요 상징</Text>
-            {dreamPatterns.patterns.symbols.map((symbol, index) => (
-              <View key={index} style={styles.patternItem}>
-                <Text style={styles.patternLabel}>{symbol.symbol}</Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${(symbol.count / dreamPatterns.patterns.symbols[0].count) * 100}%` }
-                    ]} 
-                  />
-                </View>
-                <Text style={styles.patternCount}>{symbol.count}회</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* 꿈 타입 패턴 */}
-        {dreamPatterns.patterns.dream_types.length > 0 && (
-          <View style={styles.patternCard}>
-            <Text style={styles.patternTitle}>🌙 꿈 타입</Text>
-            {dreamPatterns.patterns.dream_types.map((type, index) => (
-              <View key={index} style={styles.patternItem}>
-                <Text style={styles.patternLabel}>
-                  {DREAM_TYPE_LABELS[type.type] || type.type}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${(type.count / dreamPatterns.patterns.dream_types[0].count) * 100}%` }
-                    ]} 
-                  />
-                </View>
-                <Text style={styles.patternCount}>{type.count}회</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* 평균 명료도 */}
-        <View style={styles.patternCard}>
-          <Text style={styles.patternTitle}>✨ 평균 명료도</Text>
-          <Text style={styles.patternValue}>
-            {dreamPatterns.patterns.average_lucidity.toFixed(1)} / 5.0
-          </Text>
-        </View>
-      </ScrollView>
+      </View>
     );
   };
 
-  const renderNetworkTab = () => {
-    if (isLoading && !dreamNetwork) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.loadingText}>네트워크를 분석하고 있습니다...</Text>
-        </View>
-      );
-    }
+  const renderSymbolAnalysis = () => {
+    const symbolCounts: { [key: string]: number } = {};
+    
+    dreams.forEach(dream => {
+      if (dream.symbols) {
+        dream.symbols.forEach(symbol => {
+          symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
+        });
+      }
+    });
 
-    if (!dreamNetwork || dreamNetwork.network.length === 0) {
-      return (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataTitle}>네트워크 데이터가 없습니다</Text>
-          <Text style={styles.noDataText}>
-            최소 2개의 꿈이 있어야 네트워크 분석이 가능합니다.
-          </Text>
-        </View>
-      );
-    }
+    const sortedSymbols = Object.entries(symbolCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 8);
 
     return (
-      <ScrollView style={styles.tabContent}>
-        <View style={styles.networkCard}>
-          <Text style={styles.networkTitle}>🕸️ 꿈 네트워크</Text>
-          <Text style={styles.networkDescription}>
-            유사한 꿈들 간의 연결을 보여줍니다. ({dreamNetwork.total_connections}개 연결)
-          </Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>자주 나타나는 상징</Text>
+        <View style={styles.symbolContainer}>
+          {sortedSymbols.length > 0 ? (
+            sortedSymbols.map(([symbol, count]) => (
+              <View key={symbol} style={styles.symbolTag}>
+                <Text style={styles.symbolText}>{symbol}</Text>
+                <Text style={styles.symbolCount}>{count}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>아직 충분한 데이터가 없습니다.</Text>
+          )}
         </View>
-
-        {dreamNetwork.network.map((connection, index) => (
-          <View key={index} style={styles.connectionCard}>
-            <View style={styles.connectionHeader}>
-              <Text style={styles.connectionSimilarity}>
-                유사도: {(connection.similarity * 100).toFixed(1)}%
-              </Text>
-            </View>
-            
-            <View style={styles.connectionDreams}>
-              <View style={styles.connectionDream}>
-                <Text style={styles.connectionDreamTitle}>
-                  {connection.dream1.title || '제목 없음'}
-                </Text>
-                <Text style={styles.connectionDreamDate}>
-                  {new Date(connection.dream1.date).toLocaleDateString()}
-                </Text>
-              </View>
-              
-              <Text style={styles.connectionArrow}>↔</Text>
-              
-              <View style={styles.connectionDream}>
-                <Text style={styles.connectionDreamTitle}>
-                  {connection.dream2.title || '제목 없음'}
-                </Text>
-                <Text style={styles.connectionDreamDate}>
-                  {new Date(connection.dream2.date).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+      </View>
     );
-  };
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'insights':
-        return renderInsightsTab();
-      case 'patterns':
-        return renderPatternsTab();
-      case 'network':
-        return renderNetworkTab();
-      default:
-        return renderInsightsTab();
-    }
   };
 
   return (
     <View style={styles.container}>
       {/* 헤더 */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={goBack}>
+          <Text style={styles.backButtonText}>← 뒤로</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>인사이트</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton} 
-          onPress={onRefresh}
-          disabled={refreshing}
-        >
-          <Text style={styles.refreshButtonText}>🔄</Text>
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
-      {/* 탭 네비게이션 */}
-      <View style={styles.tabNavigation}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'insights' && styles.activeTabButton]}
-          onPress={() => setActiveTab('insights')}
-        >
-          <Text style={[styles.tabButtonText, activeTab === 'insights' && styles.activeTabButtonText]}>
-            💡 인사이트
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'patterns' && styles.activeTabButton]}
-          onPress={() => setActiveTab('patterns')}
-        >
-          <Text style={[styles.tabButtonText, activeTab === 'patterns' && styles.activeTabButtonText]}>
-            📊 패턴
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'network' && styles.activeTabButton]}
-          onPress={() => setActiveTab('network')}
-        >
-          <Text style={[styles.tabButtonText, activeTab === 'network' && styles.activeTabButtonText]}>
-            🕸️ 네트워크
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 탭 내용 */}
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {renderTabContent()}
-      </ScrollView>
-
-      {/* 에러 메시지 */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={clearError}>
-            <Text style={styles.retryButtonText}>다시 시도</Text>
-          </TouchableOpacity>
+      <ScrollView style={styles.content}>
+        {/* 기간 선택 */}
+        <View style={styles.periodSelector}>
+          {(['week', 'month', 'year'] as const).map(period => (
+            <TouchableOpacity
+              key={period}
+              style={[
+                styles.periodButton,
+                selectedPeriod === period && styles.periodButtonActive
+              ]}
+              onPress={() => setSelectedPeriod(period)}
+            >
+              <Text style={[
+                styles.periodButtonText,
+                selectedPeriod === period && styles.periodButtonTextActive
+              ]}>
+                {period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )}
+
+        {/* 통계 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>기본 통계</Text>
+          {renderStats()}
+        </View>
+
+        {/* 감정 분석 */}
+        {renderEmotionAnalysis()}
+
+        {/* 상징 분석 */}
+        {renderSymbolAnalysis()}
+
+        {/* 하단 여백 */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
     </View>
   );
 };
@@ -353,229 +190,167 @@ const InsightsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#191D2E', // Night Sky Blue
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+    backgroundColor: '#4A4063', // Dawn Purple
   },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  refreshButton: {
+  backButton: {
     padding: 8,
   },
-  refreshButtonText: {
-    color: '#e94560',
+  backButtonText: {
+    color: '#FFDDA8', // Starlight Gold
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerTitle: {
+    color: '#FFDDA8', // Starlight Gold
     fontSize: 20,
-  },
-  tabNavigation: {
-    flexDirection: 'row',
-    backgroundColor: '#2d2d44',
-    marginHorizontal: 20,
-    marginVertical: 16,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  activeTabButton: {
-    backgroundColor: '#e94560',
-  },
-  tabButtonText: {
-    color: '#888888',
-    fontSize: 14,
     fontWeight: 'bold',
   },
-  activeTabButtonText: {
-    color: '#ffffff',
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
-  },
-  tabContent: {
-    padding: 20,
+    padding: 24,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 40,
     alignItems: 'center',
-    padding: 40,
   },
   loadingText: {
-    color: '#ffffff',
+    color: '#8F8C9B', // Warm Grey 400
     fontSize: 16,
     marginTop: 16,
-    textAlign: 'center',
   },
-  noDataContainer: {
+  periodSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  periodButton: {
     flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 12,
     alignItems: 'center',
-    padding: 40,
+    borderRadius: 8,
   },
-  noDataTitle: {
-    color: '#ffffff',
-    fontSize: 18,
+  periodButtonActive: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+  },
+  periodButtonText: {
+    color: '#8F8C9B', // Warm Grey 400
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  periodButtonTextActive: {
+    color: '#191D2E', // Night Sky Blue
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFDDA8', // Starlight Gold
+    marginBottom: 16,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  statNumber: {
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 12,
+    color: '#FFDDA8', // Starlight Gold
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#8F8C9B', // Warm Grey 400
     textAlign: 'center',
   },
-  noDataText: {
-    color: '#888888',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  insightCard: {
-    backgroundColor: '#2d2d44',
-    borderRadius: 12,
+  emotionContainer: {
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
   },
-  insightTitle: {
-    color: '#e94560',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  insightText: {
-    color: '#cccccc',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  patternCard: {
-    backgroundColor: '#2d2d44',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-  },
-  patternTitle: {
-    color: '#e94560',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  patternValue: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  patternItem: {
+  emotionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  patternLabel: {
-    color: '#ffffff',
+  emotionName: {
+    color: '#EAE8F0', // Warm Grey 100
     fontSize: 14,
-    width: 80,
+    width: 60,
   },
-  progressBar: {
+  emotionBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#3d3d5c',
+    backgroundColor: '#595566', // Warm Grey 600
     borderRadius: 4,
     marginHorizontal: 12,
   },
-  progressFill: {
+  emotionBarFill: {
     height: '100%',
-    backgroundColor: '#e94560',
+    backgroundColor: '#FFDDA8', // Starlight Gold
     borderRadius: 4,
   },
-  patternCount: {
-    color: '#888888',
-    fontSize: 12,
-    width: 40,
+  emotionCount: {
+    color: '#FFDDA8', // Starlight Gold
+    fontSize: 14,
+    fontWeight: 'bold',
+    width: 30,
     textAlign: 'right',
   },
-  networkCard: {
-    backgroundColor: '#2d2d44',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+  symbolContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  networkTitle: {
-    color: '#e94560',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  networkDescription: {
-    color: '#cccccc',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  connectionCard: {
-    backgroundColor: '#2d2d44',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  connectionHeader: {
-    marginBottom: 12,
-  },
-  connectionSimilarity: {
-    color: '#4ecdc4',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  connectionDreams: {
+  symbolTag: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  connectionDream: {
-    flex: 1,
-  },
-  connectionDreamTitle: {
-    color: '#ffffff',
+  symbolText: {
+    color: '#191D2E', // Night Sky Blue
     fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontWeight: '500',
+    marginRight: 6,
   },
-  connectionDreamDate: {
-    color: '#888888',
+  symbolCount: {
+    color: '#191D2E', // Night Sky Blue
     fontSize: 12,
-  },
-  connectionArrow: {
-    color: '#e94560',
-    fontSize: 20,
-    marginHorizontal: 16,
-  },
-  errorContainer: {
-    backgroundColor: '#ff6b6b',
-    padding: 16,
-    margin: 20,
-    borderRadius: 12,
-  },
-  errorText: {
-    color: '#ffffff',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  retryButton: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignSelf: 'flex-start',
-  },
-  retryButtonText: {
-    color: '#ff6b6b',
-    fontSize: 14,
     fontWeight: 'bold',
+  },
+  emptyText: {
+    color: '#8F8C9B', // Warm Grey 400
+    fontSize: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
 

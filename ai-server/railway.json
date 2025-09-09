@@ -1,0 +1,25 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "NCP_ACCESS_KEY": "ncp_iam_BPAMKR38ZrL0CKCQXNYb",
+        "NCP_SECRET_KEY": "ncp_iam_BPKMKRW9Ah5Bc0NED39egXshECkcOu7iAW",
+        "OPENROUTER_API_KEY": "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",
+        "HOST": "0.0.0.0",
+        "PORT": "8000",
+        "DEBUG": "False"
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * 꿈 시각화 화면
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -54,41 +54,41 @@ const DreamVisualizationScreen: React.FC = () => {
   // 현재 꿈 정보 찾기
   const currentDream = dreams.find(dream => dream.id === dreamId);
 
-  useEffect(() => {
-    loadInitialData();
+  const loadVisualizations = useCallback(async () => {
+    try {
+      const data = await visualizationService.getDreamVisualizations(dreamId);
+      setVisualizations(data);
+    } catch (loadError) {
+      console.error('Load visualizations error:', loadError);
+    }
   }, [dreamId]);
 
-  const loadInitialData = async () => {
+  const loadAvailableStyles = useCallback(async () => {
+    try {
+      const styles = await visualizationService.getVisualizationStyles();
+      setAvailableStyles(styles);
+    } catch (loadError) {
+      console.error('Load styles error:', loadError);
+    }
+  }, []);
+
+  const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true);
       await Promise.all([
         loadVisualizations(),
         loadAvailableStyles(),
       ]);
-    } catch (error) {
+    } catch (loadError) {
       Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadVisualizations, loadAvailableStyles]);
 
-  const loadVisualizations = async () => {
-    try {
-      const data = await visualizationService.getDreamVisualizations(dreamId);
-      setVisualizations(data);
-    } catch (error) {
-      console.error('Load visualizations error:', error);
-    }
-  };
-
-  const loadAvailableStyles = async () => {
-    try {
-      const styles = await visualizationService.getVisualizationStyles();
-      setAvailableStyles(styles);
-    } catch (error) {
-      console.error('Load styles error:', error);
-    }
-  };
+  useEffect(() => {
+    loadInitialData();
+  }, [dreamId, loadInitialData]);
 
   const onRefresh = async () => {
     setRefreshing(true);

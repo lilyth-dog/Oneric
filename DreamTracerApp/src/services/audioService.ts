@@ -1,22 +1,17 @@
 /**
  * 오디오 녹음 서비스
+ * 시뮬레이션된 구현 (네이티브 모듈 없이)
  */
-import AudioRecorderPlayer, {
-  AVEncoderAudioQualityIOSType,
-  AVEncodingOption,
-  AudioEncoderAndroidType,
-  AudioSourceAndroidType,
-  OutputFormatAndroidType,
-} from 'react-native-audio-recorder-player';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Alert } from 'react-native';
 
 class AudioService {
-  private audioRecorderPlayer: any;
   private isRecording: boolean = false;
   private currentRecordingPath: string | null = null;
+  private recordingStartTime: number = 0;
+  private recordingDuration: number = 0;
 
   constructor() {
-    this.audioRecorderPlayer = new (AudioRecorderPlayer as any)();
+    console.log('AudioService: 초기화 완료');
   }
 
   /**
@@ -31,17 +26,17 @@ class AudioService {
             title: '오디오 녹음 권한',
             message: '꿈을 음성으로 기록하기 위해 마이크 접근 권한이 필요합니다.',
             buttonNeutral: '나중에',
-            buttonNegative: '거부',
+            buttonNegative: '취소',
             buttonPositive: '허용',
           }
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.warn('Permission request error:', err);
+        console.warn('권한 요청 실패:', err);
         return false;
       }
     }
-    return true; // iOS는 Info.plist에서 설정
+    return true; // iOS는 Info.plist에서 처리
   }
 
   /**
@@ -51,26 +46,25 @@ class AudioService {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        throw new Error('녹음 권한이 필요합니다');
+        throw new Error('녹음 권한이 필요합니다.');
       }
 
-      const audioSet = {
-        AudioEncoderAndroid: AudioEncoderAndroidType.AAC,
-        AudioSourceAndroid: AudioSourceAndroidType.MIC,
-        AVEncoderAudioQualityKeyIOS: AVEncoderAudioQualityIOSType.high,
-        AVNumberOfChannelsKeyIOS: 2,
-        AVFormatIDKeyIOS: 'aac' as any,
-        OutputFormatAndroid: OutputFormatAndroidType.AAC_ADTS,
-      };
+      // 시뮬레이션된 녹음 파일 경로 생성
+      const timestamp = new Date().getTime();
+      const fileName = `dream_recording_${timestamp}.m4a`;
+      const filePath = `simulated_${fileName}`;
 
-      const uri = await this.audioRecorderPlayer.startRecorder(undefined, audioSet);
       this.isRecording = true;
-      this.currentRecordingPath = uri;
+      this.currentRecordingPath = filePath;
+      this.recordingStartTime = Date.now();
+      this.recordingDuration = 0;
+
+      console.log('AudioService: 녹음 시작 (시뮬레이션) -', filePath);
       
-      console.log('Recording started:', uri);
-      return uri;
+      // 시뮬레이션된 녹음
+      return filePath;
     } catch (error) {
-      console.error('Start recording error:', error);
+      console.error('녹음 시작 실패:', error);
       throw error;
     }
   }
@@ -81,16 +75,21 @@ class AudioService {
   async stopRecording(): Promise<string> {
     try {
       if (!this.isRecording) {
-        throw new Error('녹음이 진행 중이 아닙니다');
+        throw new Error('현재 녹음 중이 아닙니다.');
       }
 
-      const result = await this.audioRecorderPlayer.stopRecorder();
       this.isRecording = false;
+      this.recordingDuration = (Date.now() - this.recordingStartTime) / 1000;
       
-      console.log('Recording stopped:', result);
-      return result;
+      const path = this.currentRecordingPath;
+      this.currentRecordingPath = null;
+      this.recordingStartTime = 0;
+
+      console.log('AudioService: 녹음 중지 (시뮬레이션) -', path, `(${this.recordingDuration.toFixed(1)}초)`);
+      
+      return path || '';
     } catch (error) {
-      console.error('Stop recording error:', error);
+      console.error('녹음 중지 실패:', error);
       throw error;
     }
   }
@@ -98,12 +97,18 @@ class AudioService {
   /**
    * 녹음 재생
    */
-  async playRecording(uri: string): Promise<void> {
+  async playRecording(path: string): Promise<void> {
     try {
-      await this.audioRecorderPlayer.startPlayer(uri);
-      console.log('Playing recording:', uri);
+      if (!path) {
+        throw new Error('재생할 파일이 없습니다.');
+      }
+
+      console.log('AudioService: 재생 시작 (시뮬레이션) -', path);
+      
+      // 시뮬레이션된 재생
+      Alert.alert('재생', '녹음 파일을 재생합니다. (시뮬레이션)');
     } catch (error) {
-      console.error('Play recording error:', error);
+      console.error('재생 실패:', error);
       throw error;
     }
   }
@@ -111,93 +116,81 @@ class AudioService {
   /**
    * 재생 중지
    */
-  async stopPlaying(): Promise<void> {
+  async stopPlayback(): Promise<void> {
     try {
-      await this.audioRecorderPlayer.stopPlayer();
-      console.log('Stopped playing');
+      console.log('AudioService: 재생 중지');
+      // 실제 재생 중지는 네이티브 모듈이 필요
     } catch (error) {
-      console.error('Stop playing error:', error);
+      console.error('재생 중지 실패:', error);
       throw error;
     }
   }
 
   /**
-   * 녹음 상태 확인
+   * 녹음 파일 삭제
+   */
+  async deleteRecording(path: string): Promise<void> {
+    try {
+      if (!path) return;
+
+      console.log('AudioService: 파일 삭제 (시뮬레이션) -', path);
+      // 시뮬레이션된 파일 삭제
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 현재 녹음 상태 확인
    */
   isCurrentlyRecording(): boolean {
     return this.isRecording;
   }
 
   /**
-   * 현재 녹음 경로
+   * 현재 녹음 파일 경로
    */
   getCurrentRecordingPath(): string | null {
     return this.currentRecordingPath;
   }
 
   /**
-   * 녹음 시간 가져오기
+   * 현재 재생 시간 (초)
    */
   async getCurrentTime(): Promise<number> {
-    try {
-      return await this.audioRecorderPlayer.getCurrentTime();
-    } catch (error) {
-      console.error('Get current time error:', error);
-      return 0;
+    if (this.isRecording) {
+      return (Date.now() - this.recordingStartTime) / 1000;
     }
+    return this.recordingDuration;
   }
 
   /**
-   * 녹음 시간 포맷팅
+   * 시간을 MM:SS 형식으로 포맷
    */
-  formatTime(milliseconds: number): string {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
   /**
-   * 녹음 리스너 설정
+   * 녹음 파일 정보 가져오기
    */
-  addRecordBackListener(callback: (data: any) => void) {
-    this.audioRecorderPlayer.addRecordBackListener(callback);
-  }
-
-  /**
-   * 재생 리스너 설정
-   */
-  addPlayBackListener(callback: (data: any) => void) {
-    this.audioRecorderPlayer.addPlayBackListener(callback);
-  }
-
-  /**
-   * 리스너 제거
-   */
-  removeRecordBackListener() {
-    this.audioRecorderPlayer.removeRecordBackListener();
-  }
-
-  /**
-   * 재생 리스너 제거
-   */
-  removePlayBackListener() {
-    this.audioRecorderPlayer.removePlayBackListener();
-  }
-
-  /**
-   * 정리
-   */
-  async cleanup() {
+  async getRecordingInfo(path: string): Promise<{ size: number; duration: number }> {
     try {
-      if (this.isRecording) {
-        await this.stopRecording();
+      if (!path) {
+        return { size: 0, duration: 0 };
       }
-      await this.stopPlaying();
-      this.removeRecordBackListener();
-      this.removePlayBackListener();
+
+      // 시뮬레이션된 파일 정보
+      return {
+        size: 1024 * 100, // 100KB 시뮬레이션
+        duration: this.recordingDuration,
+      };
     } catch (error) {
-      console.error('Cleanup error:', error);
+      console.error('파일 정보 조회 실패:', error);
+      return { size: 0, duration: 0 };
     }
   }
 }

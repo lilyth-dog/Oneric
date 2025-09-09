@@ -4,7 +4,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthToken, LoginCredentials, RegisterData, OnboardingData } from '../types/auth';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용
+const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
 
 class AuthService {
   private token: string | null = null;
@@ -14,22 +15,30 @@ class AuthService {
    */
   async register(userData: RegisterData): Promise<AuthToken> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      // 로컬 개발용 - 실제 API 대신 시뮬레이션
+      console.log('Registering user:', userData);
+      
+      // 시뮬레이션된 응답
+      const mockResult: AuthToken = {
+        access_token: 'mock_access_token_' + Date.now(),
+        token_type: 'bearer',
+        expires_in: 3600,
+        user: {
+          id: 'user_' + Date.now(),
+          email: userData.email,
+          name: userData.name,
+          auth_provider: 'firebase',
+          subscription_plan: 'free',
+          hasCompletedOnboarding: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      };
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || '회원가입에 실패했습니다');
-      }
-
-      const result = await response.json();
-      await this.setToken(result.access_token);
-      return result;
+      await this.setToken(mockResult.access_token);
+      await this.setUserData(mockResult.user);
+      
+      return mockResult;
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -41,29 +50,35 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthToken> {
     try {
-      const formData = new FormData();
-      formData.append('username', credentials.email);
-      formData.append('password', credentials.password);
-
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          username: credentials.email,
-          password: credentials.password,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || '로그인에 실패했습니다');
+      // 로컬 개발용 - 실제 API 대신 시뮬레이션
+      console.log('Logging in user:', credentials.email);
+      
+      // 간단한 검증 (실제로는 서버에서 처리)
+      if (!credentials.email || !credentials.password) {
+        throw new Error('이메일과 비밀번호를 입력해주세요.');
       }
 
-      const result = await response.json();
-      await this.setToken(result.access_token);
-      return result;
+      // 시뮬레이션된 응답
+      const mockResult: AuthToken = {
+        access_token: 'mock_access_token_' + Date.now(),
+        token_type: 'bearer',
+        expires_in: 3600,
+        user: {
+          id: 'user_' + Date.now(),
+          email: credentials.email,
+          name: credentials.email.split('@')[0],
+          auth_provider: 'firebase',
+          subscription_plan: 'free',
+          hasCompletedOnboarding: true, // 로그인 시에는 온보딩 완료로 가정
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      };
+
+      await this.setToken(mockResult.access_token);
+      await this.setUserData(mockResult.user);
+      
+      return mockResult;
     } catch (error) {
       console.error('Login error:', error);
       throw error;

@@ -5,10 +5,12 @@
 export interface User {
   id: string;
   email?: string;
+  name?: string;
   auth_provider: 'firebase' | 'google' | 'apple';
   subscription_plan: 'free' | 'plus';
   subscription_expires_at?: string;
   notification_settings?: Record<string, any>;
+  hasCompletedOnboarding?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +29,7 @@ export interface LoginCredentials {
 
 export interface RegisterData {
   email?: string;
+  name?: string;
   auth_provider: 'firebase' | 'google' | 'apple';
   firebase_uid?: string;
   display_name?: string;

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # AI API 서버
+  api:
+    build: .
+    container_name: ggumgyeol-ai-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # 리소스 제한 (저비용 서버용)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Redis (캐싱용)
+  redis:
+    image: redis:7-alpine
+    container_name: ggumgyeol-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # Nginx (리버스 프록시)
+  nginx:
+    image: nginx:alpine
+    container_name: ggumgyeol-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+    restart: unless-stopped

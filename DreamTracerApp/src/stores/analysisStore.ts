@@ -70,7 +70,7 @@ interface AnalysisStore {
   reset: () => void;
 }
 
-export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
+export const useAnalysisStore = create<AnalysisStore>((set, _get) => ({
   // Initial state
   currentAnalysis: null,
   dailyInsights: null,

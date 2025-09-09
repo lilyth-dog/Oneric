@@ -1,118 +1,122 @@
 /**
- * 온보딩 메인 화면
+ * 온보딩 화면
+ * 디자인 가이드에 따른 "고요한 탐험" 컨셉 구현
  */
 import React, { useState } from 'react';
 import {
   View,
+  Text,
+  TouchableOpacity,
   StyleSheet,
-  Alert,
+  // Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import OnboardingStep1 from './OnboardingStep1';
-import OnboardingStep2 from './OnboardingStep2';
-import OnboardingStep3 from './OnboardingStep3';
-import OnboardingStep4 from './OnboardingStep4';
-import { OnboardingData } from '../../types/auth';
-import authService from '../../services/authService';
+import { useNavigationStore } from '../../stores/navigationStore';
+import { useAuthStore } from '../../stores/authStore';
+
+  // const { width, height } = Dimensions.get('window');
+
+const onboardingSteps = [
+  {
+    id: 1,
+    title: '꿈을 기록하세요',
+    subtitle: '텍스트와 음성으로 꿈을 자유롭게 기록할 수 있습니다',
+    icon: '📝',
+    description: '잠에서 깬 직후에도 쉽고 빠르게 꿈의 내용을 저장하세요.',
+  },
+  {
+    id: 2,
+    title: 'AI가 분석해드립니다',
+    subtitle: '심리학적 통찰과 개인화된 해석을 제공합니다',
+    icon: '🧠',
+    description: 'Google Gemini AI가 꿈의 상징과 감정 패턴을 분석하여 의미를 찾아드립니다.',
+  },
+  {
+    id: 3,
+    title: '꿈을 시각화하세요',
+    subtitle: '10가지 아트 스타일로 꿈을 예술 작품으로 변환',
+    icon: '🎨',
+    description: '몽환적인 수채화부터 초현실주의 유화까지, 꿈을 아름다운 이미지로 만나보세요.',
+  },
+  {
+    id: 4,
+    title: '안전한 커뮤니티',
+    subtitle: '익명으로 꿈을 공유하고 집단 지성의 해몽을 경험하세요',
+    icon: '🌟',
+    description: '개인정보는 완벽히 보호되며, 따뜻한 공감과 통찰을 나눌 수 있습니다.',
+  },
+];
 
 const OnboardingScreen: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({});
-  const navigation = useNavigation();
+  const { navigate } = useNavigationStore();
+  const { setOnboardingCompleted } = useAuthStore();
+  const [currentStep, setCurrentStep] = useState(0);
 
-  const handleStep1Next = (data: any) => {
-    setOnboardingData(prev => ({ ...prev, step1: data }));
-    setCurrentStep(2);
-  };
-
-  const handleStep2Next = (data: any) => {
-    setOnboardingData(prev => ({ ...prev, step2: data }));
-    setCurrentStep(3);
-  };
-
-  const handleStep2Back = () => {
-    setCurrentStep(1);
-  };
-
-  const handleStep3Next = (data: any) => {
-    setOnboardingData(prev => ({ ...prev, step3: data }));
-    setCurrentStep(4);
-  };
-
-  const handleStep3Back = () => {
-    setCurrentStep(2);
-  };
-
-  const handleStep4Complete = async (data: any) => {
-    try {
-      const completeData: OnboardingData = {
-        ...onboardingData,
-        step4: data,
-      } as OnboardingData;
-
-      await authService.completeOnboarding(completeData);
-      
-      Alert.alert(
-        '환영합니다!',
-        '온보딩이 완료되었습니다. 꿈결과 함께 꿈의 여행을 시작해보세요!',
-        [
-          {
-            text: '시작하기',
-            onPress: () => navigation.navigate('Main' as never),
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert(
-        '오류',
-        '온보딩 완료 중 오류가 발생했습니다. 다시 시도해주세요.',
-        [
-          {
-            text: '확인',
-            onPress: () => setCurrentStep(4),
-          },
-        ]
-      );
+  const handleNext = () => {
+    if (currentStep < onboardingSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      // 온보딩 완료
+      setOnboardingCompleted(true);
+      navigate('Home');
     }
   };
 
-  const handleStep4Back = () => {
-    setCurrentStep(3);
+  const handleSkip = () => {
+    setOnboardingCompleted(true);
+    navigate('Home');
   };
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return <OnboardingStep1 onNext={handleStep1Next} />;
-      case 2:
-        return (
-          <OnboardingStep2
-            onNext={handleStep2Next}
-            onBack={handleStep2Back}
-          />
-        );
-      case 3:
-        return (
-          <OnboardingStep3
-            onNext={handleStep3Next}
-            onBack={handleStep3Back}
-          />
-        );
-      case 4:
-        return (
-          <OnboardingStep4
-            onComplete={handleStep4Complete}
-            onBack={handleStep4Back}
-          />
-        );
-      default:
-        return <OnboardingStep1 onNext={handleStep1Next} />;
-    }
-  };
+  const currentStepData = onboardingSteps[currentStep];
 
   return (
     <View style={styles.container}>
-      {renderCurrentStep()}
+      <View style={styles.content}>
+        {/* 아이콘 */}
+        <View style={styles.iconContainer}>
+          <Text style={styles.icon}>{currentStepData.icon}</Text>
+        </View>
+
+        {/* 제목 */}
+        <Text style={styles.title}>{currentStepData.title}</Text>
+        
+        {/* 부제목 */}
+        <Text style={styles.subtitle}>{currentStepData.subtitle}</Text>
+        
+        {/* 설명 */}
+        <Text style={styles.description}>{currentStepData.description}</Text>
+      </View>
+
+      {/* 진행 표시기 */}
+      <View style={styles.progressContainer}>
+        {onboardingSteps.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.progressDot,
+              index === currentStep && styles.progressDotActive,
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* 버튼들 */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleSkip}
+        >
+          <Text style={styles.skipButtonText}>건너뛰기</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={handleNext}
+        >
+          <Text style={styles.nextButtonText}>
+            {currentStep === onboardingSteps.length - 1 ? '시작하기' : '다음'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -120,7 +124,106 @@ const OnboardingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#191D2E', // Night Sky Blue
+    paddingHorizontal: 24,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#4A4063', // Dawn Purple
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+    shadowColor: '#FFDDA8',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  icon: {
+    fontSize: 48,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFDDA8', // Starlight Gold
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 20,
+    color: '#EAE8F0', // Warm Grey 100
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 28,
+  },
+  description: {
+    fontSize: 16,
+    color: '#8F8C9B', // Warm Grey 400
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#595566', // Warm Grey 600
+    marginHorizontal: 4,
+  },
+  progressDotActive: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    width: 24,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 40,
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  skipButtonText: {
+    color: '#8F8C9B', // Warm Grey 400
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  nextButton: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    shadowColor: '#FFDDA8',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  nextButtonText: {
+    color: '#191D2E', // Night Sky Blue
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

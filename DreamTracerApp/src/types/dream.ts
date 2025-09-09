@@ -72,6 +72,7 @@ export enum EmotionType {
 export interface DreamListResponse {
   dreams: Dream[];
   total_count: number;
+  total: number;
   page: number;
   page_size: number;
   has_next: boolean;

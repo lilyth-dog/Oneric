@@ -13,13 +13,21 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigationStore } from '../../stores/navigationStore';
 import { useDreamStore } from '../../stores/dreamStore';
 import { DreamCreate, EmotionType, EMOTION_LABELS, DREAM_TYPE_LABELS, LUCIDITY_LABELS, SLEEP_QUALITY_LABELS } from '../../types/dream';
-import audioService from '../../services/audioService';
+import voiceService, { VoiceServiceCallbacks, RealtimeSTTResult } from '../../services/voiceService';
+import { 
+  DreamRecordTitleStyle, 
+  EmotionalSubtitleStyle, 
+  ButtonFontStyle, 
+  BodyFontStyle, 
+  SmallFontStyle,
+  PersonalCelebrationStyle
+} from '../../styles/fonts';
 
 const CreateDreamScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const { goBack } = useNavigationStore();
   const { createDream, isCreating } = useDreamStore();
   
   // 기본 상태
@@ -34,19 +42,55 @@ const CreateDreamScreen: React.FC = () => {
   const [symbols, setSymbols] = useState<string[]>([]);
   const [emotionTags, setEmotionTags] = useState<EmotionType[]>([]);
   
-  // 음성 녹음 상태
+  // 음성 녹음 및 STT 상태
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioPath, setAudioPath] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionResult, setTranscriptionResult] = useState<string>('');
+  const [isRealtimeSTTActive, setIsRealtimeSTTActive] = useState(false);
+  const [realtimeText, setRealtimeText] = useState('');
   const [characterInput, setCharacterInput] = useState('');
   const [symbolInput, setSymbolInput] = useState('');
 
   useEffect(() => {
+    // 음성 서비스 콜백 설정
+    const callbacks: VoiceServiceCallbacks = {
+      onRecordingStart: () => {
+        setIsRecording(true);
+      },
+      onRecordingStop: (path) => {
+        setIsRecording(false);
+        setAudioPath(path);
+      },
+      onTranscriptionStart: () => {
+        setIsTranscribing(true);
+      },
+      onTranscriptionComplete: (result) => {
+        setIsTranscribing(false);
+        setTranscriptionResult(result.text);
+        // STT 결과를 꿈 내용에 자동 추가
+        setBodyText(prev => prev + (prev ? '\n\n' : '') + result.text);
+      },
+      onRealtimeSTTResult: (result: RealtimeSTTResult) => {
+        if (result.isFinal) {
+          setRealtimeText(prev => prev + result.finalText + ' ');
+          // 실시간 STT 결과를 꿈 내용에 자동 추가
+          setBodyText(prev => prev + (prev ? ' ' : '') + result.finalText);
+        }
+      },
+      onError: (error) => {
+        Alert.alert('오류', error.message);
+      }
+    };
+
+    voiceService.setCallbacks(callbacks);
+
     // 녹음 시간 업데이트
     let interval: NodeJS.Timeout;
     if (isRecording) {
       interval = setInterval(async () => {
-        const time = await audioService.getCurrentTime();
+        const time = await voiceService.getCurrentTime();
         setRecordingTime(time);
       }, 1000);
     }
@@ -57,8 +101,7 @@ const CreateDreamScreen: React.FC = () => {
 
   const handleStartRecording = async () => {
     try {
-      const path = await audioService.startRecording();
-      setIsRecording(true);
+      const path = await voiceService.startRecording();
       setAudioPath(path);
     } catch (error) {
       Alert.alert('오류', '녹음을 시작할 수 없습니다.');
@@ -67,8 +110,7 @@ const CreateDreamScreen: React.FC = () => {
 
   const handleStopRecording = async () => {
     try {
-      await audioService.stopRecording();
-      setIsRecording(false);
+      await voiceService.stopRecording();
     } catch (error) {
       Alert.alert('오류', '녹음을 중지할 수 없습니다.');
     }
@@ -77,10 +119,38 @@ const CreateDreamScreen: React.FC = () => {
   const handlePlayRecording = async () => {
     if (audioPath) {
       try {
-        await audioService.playRecording(audioPath);
+        await voiceService.playRecording(audioPath);
       } catch (error) {
         Alert.alert('오류', '녹음을 재생할 수 없습니다.');
       }
+    }
+  };
+
+  const handleTranscribeRecording = async () => {
+    if (audioPath) {
+      try {
+        await voiceService.transcribeRecording(audioPath);
+      } catch (error) {
+        Alert.alert('오류', '음성 변환에 실패했습니다.');
+      }
+    }
+  };
+
+  const handleStartRealtimeSTT = async () => {
+    try {
+      await voiceService.startRealtimeSTT();
+      setIsRealtimeSTTActive(true);
+    } catch (error) {
+      Alert.alert('오류', '실시간 음성 인식을 시작할 수 없습니다.');
+    }
+  };
+
+  const handleStopRealtimeSTT = async () => {
+    try {
+      await voiceService.stopRealtimeSTT();
+      setIsRealtimeSTTActive(false);
+    } catch (error) {
+      Alert.alert('오류', '실시간 음성 인식을 중지할 수 없습니다.');
     }
   };
 
@@ -137,8 +207,8 @@ const CreateDreamScreen: React.FC = () => {
       };
 
       await createDream(dreamData);
-      Alert.alert('성공', '꿈이 기록되었습니다!', [
-        { text: '확인', onPress: () => navigation.goBack() }
+      Alert.alert('성공', '꿈 조각이 안전하게 보관되었습니다!', [
+        { text: '확인', onPress: () => goBack() }
       ]);
     } catch (error) {
       Alert.alert('오류', '꿈 기록에 실패했습니다.');
@@ -192,9 +262,11 @@ const CreateDreamScreen: React.FC = () => {
           />
         </View>
 
-        {/* 음성 녹음 */}
+        {/* 음성 녹음 및 STT */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>음성 녹음 (선택사항)</Text>
+          <Text style={styles.sectionTitle}>음성 녹음 및 변환 (선택사항)</Text>
+          
+          {/* 녹음 컨트롤 */}
           <View style={styles.recordingContainer}>
             {!isRecording ? (
               <TouchableOpacity style={styles.recordButton} onPress={handleStartRecording}>
@@ -208,7 +280,7 @@ const CreateDreamScreen: React.FC = () => {
             
             {recordingTime > 0 && (
               <Text style={styles.recordingTime}>
-                {audioService.formatTime(recordingTime)}
+                {voiceService.formatTime(recordingTime)}
               </Text>
             )}
             
@@ -216,6 +288,49 @@ const CreateDreamScreen: React.FC = () => {
               <TouchableOpacity style={styles.playButton} onPress={handlePlayRecording}>
                 <Text style={styles.playButtonText}>▶️ 재생</Text>
               </TouchableOpacity>
+            )}
+          </View>
+
+          {/* STT 변환 */}
+          {audioPath && !isRecording && (
+            <View style={styles.sttContainer}>
+              <TouchableOpacity 
+                style={[styles.sttButton, isTranscribing && styles.disabledButton]} 
+                onPress={handleTranscribeRecording}
+                disabled={isTranscribing}
+              >
+                <Text style={styles.sttButtonText}>
+                  {isTranscribing ? '🔄 변환 중...' : '📝 텍스트로 변환'}
+                </Text>
+              </TouchableOpacity>
+              
+              {transcriptionResult && (
+                <View style={styles.transcriptionResult}>
+                  <Text style={styles.transcriptionLabel}>변환 결과:</Text>
+                  <Text style={styles.transcriptionText}>{transcriptionResult}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* 실시간 STT */}
+          <View style={styles.realtimeSTTContainer}>
+            <Text style={styles.realtimeSTTTitle}>실시간 음성 인식</Text>
+            {!isRealtimeSTTActive ? (
+              <TouchableOpacity style={styles.realtimeSTTButton} onPress={handleStartRealtimeSTT}>
+                <Text style={styles.realtimeSTTButtonText}>🎙️ 실시간 인식 시작</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.stopRealtimeSTTButton} onPress={handleStopRealtimeSTT}>
+                <Text style={styles.stopRealtimeSTTButtonText}>⏹️ 실시간 인식 중지</Text>
+              </TouchableOpacity>
+            )}
+            
+            {isRealtimeSTTActive && (
+              <View style={styles.realtimeSTTResult}>
+                <Text style={styles.realtimeSTTLabel}>인식 중...</Text>
+                <Text style={styles.realtimeSTTText}>{realtimeText}</Text>
+              </View>
             )}
           </View>
         </View>
@@ -402,38 +517,38 @@ const CreateDreamScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#191D2E', // Night Sky Blue
   },
   scrollView: {
     flex: 1,
-    padding: 20,
+    padding: 24,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
+    paddingTop: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    ...DreamRecordTitleStyle,
+    color: '#FFDDA8', // Starlight Gold
+    textAlign: 'center',
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
+    ...EmotionalSubtitleStyle,
+    color: '#FFDDA8', // Starlight Gold
+    marginBottom: 16,
   },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: '#4A4063', // Dawn Purple
     borderRadius: 12,
     padding: 16,
-    fontSize: 16,
-    color: '#ffffff',
+    ...BodyFontStyle,
+    color: '#EAE8F0', // Warm Grey 100
     borderWidth: 1,
-    borderColor: '#3d3d5c',
+    borderColor: '#595566', // Warm Grey 600
   },
   textArea: {
     height: 120,
@@ -445,38 +560,39 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   recordButton: {
-    backgroundColor: '#e94560',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   recordButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
+    ...ButtonFontStyle,
+    color: '#191D2E', // Night Sky Blue
   },
   stopButton: {
-    backgroundColor: '#ff6b6b',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#e94560',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   stopButtonText: {
+    ...ButtonFontStyle,
     color: '#ffffff',
-    fontWeight: 'bold',
   },
   playButton: {
-    backgroundColor: '#4ecdc4',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   playButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
+    ...ButtonFontStyle,
+    color: '#FFDDA8', // Starlight Gold
   },
   recordingTime: {
-    color: '#ffffff',
-    fontSize: 16,
+    ...BodyFontStyle,
+    color: '#FFDDA8', // Starlight Gold
+    fontSize: 18,
     fontWeight: 'bold',
   },
   sliderContainer: {
@@ -485,24 +601,25 @@ const styles = StyleSheet.create({
   },
   sliderButton: {
     flex: 1,
-    backgroundColor: '#2d2d44',
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#3d3d5c',
+    borderColor: '#595566', // Warm Grey 600
   },
   sliderButtonActive: {
-    backgroundColor: '#e94560',
-    borderColor: '#e94560',
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderColor: '#FFDDA8',
   },
   sliderButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
+    ...BodyFontStyle,
+    color: '#EAE8F0', // Warm Grey 100
+    fontSize: 18,
     fontWeight: 'bold',
   },
   sliderButtonTextActive: {
-    color: '#ffffff',
+    color: '#191D2E', // Night Sky Blue
   },
   typeContainer: {
     flexDirection: 'row',
@@ -522,8 +639,8 @@ const styles = StyleSheet.create({
     borderColor: '#e94560',
   },
   typeButtonText: {
+    ...SmallFontStyle,
     color: '#ffffff',
-    fontSize: 14,
   },
   typeButtonTextActive: {
     color: '#ffffff',
@@ -547,6 +664,7 @@ const styles = StyleSheet.create({
     borderColor: '#e94560',
   },
   emotionButtonText: {
+    ...SmallFontStyle,
     color: '#ffffff',
     fontSize: 12,
   },
@@ -564,7 +682,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d2d44',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
+    ...SmallFontStyle,
     color: '#ffffff',
     borderWidth: 1,
     borderColor: '#3d3d5c',
@@ -577,8 +695,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButtonText: {
+    ...ButtonFontStyle,
     color: '#ffffff',
-    fontWeight: 'bold',
   },
   tagContainer: {
     flexDirection: 'row',
@@ -592,24 +710,128 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagText: {
+    ...SmallFontStyle,
     color: '#ffffff',
     fontSize: 12,
   },
   saveButton: {
-    backgroundColor: '#e94560',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 32,
     marginBottom: 40,
+    shadowColor: '#FFDDA8',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabledButton: {
-    backgroundColor: '#6b6b6b',
+    backgroundColor: '#595566', // Warm Grey 600
+    shadowOpacity: 0,
+    elevation: 0,
   },
   saveButtonText: {
+    ...PersonalCelebrationStyle,
+    color: '#191D2E', // Night Sky Blue
+    fontSize: 18,
+  },
+  sttContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  sttButton: {
+    backgroundColor: '#4A4063',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#595566',
+  },
+  sttButtonText: {
+    ...ButtonFontStyle,
+    color: '#FFDDA8',
+  },
+  transcriptionResult: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4A4063',
+  },
+  transcriptionLabel: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+    marginBottom: 4,
+  },
+  transcriptionText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    lineHeight: 20,
+  },
+  realtimeSTTContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  realtimeSTTTitle: {
+    ...EmotionalSubtitleStyle,
+    color: '#FFDDA8',
+    marginBottom: 12,
+  },
+  realtimeSTTButton: {
+    backgroundColor: '#4A4063',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#595566',
+  },
+  realtimeSTTButtonText: {
+    ...ButtonFontStyle,
+    color: '#FFDDA8',
+  },
+  stopRealtimeSTTButton: {
+    backgroundColor: '#e94560',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f56565',
+  },
+  stopRealtimeSTTButtonText: {
+    ...ButtonFontStyle,
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  },
+  realtimeSTTResult: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4A4063',
+  },
+  realtimeSTTLabel: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+    marginBottom: 4,
+  },
+  realtimeSTTText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    lineHeight: 20,
   },
 });
 

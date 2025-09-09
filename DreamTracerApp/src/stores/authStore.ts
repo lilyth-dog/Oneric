@@ -12,14 +12,15 @@ interface AuthStore extends AuthState {
   firebaseAuth: (firebaseToken: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
+  checkAuthState: () => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setOnboardingCompleted: (completed: boolean) => void;
   setLoading: (loading: boolean) => void;
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-  // Initial state
+export const useAuthStore = create<AuthStore>((set, _get) => ({
+  // Initial state - 테스트를 위해 초기화
   isAuthenticated: false,
   isLoading: false,
   user: null,
@@ -117,6 +118,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
+  checkAuthState: async () => {
+    set({ isLoading: true });
+    try {
+      const isAuthenticated = await authService.checkAuthStatus();
+      const userData = await authService.getUserData();
+      const token = await authService.getToken();
+      
+      set({
+        isAuthenticated,
+        user: userData,
+        token,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      console.error('Auth state check failed:', error);
+    }
+  },
+
   setUser: (user: User | null) => {
     set({ user });
   },
@@ -127,6 +147,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   setOnboardingCompleted: (completed: boolean) => {
     set({ onboardingCompleted: completed });
+    // 사용자 객체도 업데이트
+    const { user } = _get();
+    if (user) {
+      set({ user: { ...user, hasCompletedOnboarding: completed } });
+    }
   },
 
   setLoading: (loading: boolean) => {

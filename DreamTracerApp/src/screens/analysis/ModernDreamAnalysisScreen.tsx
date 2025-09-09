@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Alert,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import dreamService from '../../services/dreamService';
@@ -61,8 +60,8 @@ const ModernDreamAnalysisScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // 애니메이션 값들
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(50);
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const slideAnim = useMemo(() => new Animated.Value(50), []);
 
   const loadModernAnalysis = useCallback(async () => {
     setLoading(true);

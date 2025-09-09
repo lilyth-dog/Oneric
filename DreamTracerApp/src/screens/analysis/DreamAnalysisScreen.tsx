@@ -1,301 +1,310 @@
 /**
- * 꿈 분석 화면
+ * 꿈 분석 결과 화면
+ * AI 기반 꿈 분석 및 시각화 표시
  */
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
+  Image,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { useAnalysisStore } from '../../stores/analysisStore';
-import { useDreamStore } from '../../stores/dreamStore';
-import { EMOTION_LABELS, DREAM_TYPE_LABELS } from '../../types/dream';
+import { useNavigationStore } from '../../stores/navigationStore';
+import dreamAnalysisService, { DreamAnalysisRequest, DreamAnalysisResponse } from '../../services/dreamAnalysisService';
+import aiService, { AIModel } from '../../services/aiService';
+import { 
+  EmotionalTitleStyle, 
+  EmotionalSubtitleStyle, 
+  ButtonFontStyle, 
+  BodyFontStyle, 
+  SmallFontStyle,
+  PersonalGreetingStyle,
+  AnalysisReportTitleStyle
+} from '../../styles/fonts';
 
-interface RouteParams {
+interface DreamAnalysisScreenProps {
   dreamId: string;
+  dreamText: string;
+  dreamTitle?: string;
+  emotionTags?: string[];
+  lucidityLevel?: number;
+  sleepQuality?: number;
 }
 
-const DreamAnalysisScreen: React.FC = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { dreamId } = route.params as RouteParams;
+const DreamAnalysisScreen: React.FC<DreamAnalysisScreenProps> = ({
+  dreamId,
+  dreamText,
+  dreamTitle,
+  emotionTags,
+  lucidityLevel,
+  sleepQuality
+}) => {
+  const { goBack } = useNavigationStore();
   
-  const { 
-    currentAnalysis, 
-    isLoading, 
-    isAnalyzing, 
-    error,
-    getDreamAnalysis,
-    requestDreamAnalysis,
-    pollAnalysisStatus,
-    setCurrentAnalysis,
-    clearError
-  } = useAnalysisStore();
-  
-  const { dreams } = useDreamStore();
-  
-  const [refreshing, setRefreshing] = useState(false);
-  const [analysisTaskId, setAnalysisTaskId] = useState<string | null>(null);
-
-  // 현재 꿈 정보 찾기
-  const currentDream = dreams.find(dream => dream.id === dreamId);
+  const [analysisResult, setAnalysisResult] = useState<DreamAnalysisResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel>(AIModel.LLAMA_3_8B);
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
 
   useEffect(() => {
-    loadAnalysis();
-  }, [dreamId]);
+    loadAvailableModels();
+    performAnalysis();
+  }, []);
 
-  const loadAnalysis = async () => {
+  const loadAvailableModels = async () => {
     try {
-      await getDreamAnalysis(dreamId);
+      const models = aiService.getAvailableModels();
+      setAvailableModels(models);
     } catch (error) {
-      // 분석 결과가 없으면 분석 요청
-      if (error instanceof Error && error.message.includes('404')) {
-        // 분석 결과가 없는 경우
-      } else {
-        Alert.alert('오류', '분석 결과를 불러오는데 실패했습니다.');
-      }
+      console.error('모델 목록 로드 실패:', error);
     }
   };
 
-  const handleRequestAnalysis = async () => {
+  const performAnalysis = async () => {
     try {
-      const taskId = await requestDreamAnalysis(dreamId);
-      setAnalysisTaskId(taskId);
+      setIsLoading(true);
       
-      // 실시간 상태 폴링 시작
-      pollAnalysisStatus(
-        taskId,
-        (result) => {
-          // 분석 완료 시 결과 다시 로드
-          loadAnalysis();
-          setAnalysisTaskId(null);
-          Alert.alert('완료', '꿈 분석이 완료되었습니다!');
-        },
-        (error) => {
-          setAnalysisTaskId(null);
-          Alert.alert('오류', `분석에 실패했습니다: ${error}`);
-        }
-      );
+      const request: DreamAnalysisRequest = {
+        dreamId,
+        dreamText,
+        dreamTitle,
+        emotionTags,
+        lucidityLevel,
+        sleepQuality
+      };
+
+      const result = await dreamAnalysisService.analyzeDream(request);
+      setAnalysisResult(result);
     } catch (error) {
-      Alert.alert('오류', '분석 요청에 실패했습니다.');
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await loadAnalysis();
+      Alert.alert('오류', error instanceof Error ? error.message : '분석에 실패했습니다.');
     } finally {
-      setRefreshing(false);
+      setIsLoading(false);
     }
   };
 
-  const renderAnalysisContent = () => {
-    if (isAnalyzing || analysisTaskId) {
-      return (
-        <View style={styles.analyzingContainer}>
-          <ActivityIndicator size="large" color="#e94560" />
-          <Text style={styles.analyzingText}>꿈을 분석하고 있습니다...</Text>
-          <Text style={styles.analyzingSubText}>잠시만 기다려주세요</Text>
-        </View>
-      );
-    }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await performAnalysis();
+    setIsRefreshing(false);
+  };
 
-    if (!currentAnalysis) {
-      return (
-        <View style={styles.noAnalysisContainer}>
-          <Text style={styles.noAnalysisTitle}>분석 결과가 없습니다</Text>
-          <Text style={styles.noAnalysisText}>
-            이 꿈에 대한 AI 분석을 요청해보세요.
-          </Text>
-          <TouchableOpacity 
-            style={styles.analyzeButton} 
-            onPress={handleRequestAnalysis}
-            disabled={isAnalyzing}
-          >
-            <Text style={styles.analyzeButtonText}>AI 분석 요청</Text>
-          </TouchableOpacity>
-        </View>
-      );
+  const handleModelChange = async (model: AIModel) => {
+    try {
+      const success = await aiService.switchModel(model);
+      if (success) {
+        setSelectedModel(model);
+        await performAnalysis();
+      } else {
+        Alert.alert('오류', '모델 변경에 실패했습니다.');
+      }
+    } catch (error) {
+      Alert.alert('오류', '모델 변경 중 오류가 발생했습니다.');
     }
+  };
+
+  const handleShareAnalysis = () => {
+    if (analysisResult) {
+      // 분석 결과 공유 로직
+      Alert.alert('공유', '분석 결과를 공유합니다.');
+    }
+  };
+
+  const handleSaveAnalysis = () => {
+    if (analysisResult) {
+      // 분석 결과 저장 로직
+      Alert.alert('저장', '분석 결과를 저장했습니다.');
+    }
+  };
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#FFDDA8" />
+      <Text style={styles.loadingText}>AI가 꿈을 분석하고 있습니다...</Text>
+      <Text style={styles.loadingSubtext}>잠시만 기다려주세요</Text>
+    </View>
+  );
+
+  const renderAnalysisResult = () => {
+    if (!analysisResult) return null;
+
+    const { analysis, visualization, insights, recommendations } = analysisResult;
 
     return (
-      <ScrollView style={styles.analysisContent}>
-        {/* 요약 */}
-        {currentAnalysis.summary_text && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📝 꿈 요약</Text>
-            <Text style={styles.sectionContent}>{currentAnalysis.summary_text}</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 헤더 */}
+        <View style={styles.header}>
+          <Text style={styles.title}>꿈 분석 결과</Text>
+          <Text style={styles.subtitle}>{dreamTitle || '제목 없음'}</Text>
+        </View>
+
+        {/* AI 모델 선택 */}
+        <View style={styles.modelSection}>
+          <Text style={styles.sectionTitle}>AI 모델</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modelScrollView}>
+            {availableModels.map((model) => (
+              <TouchableOpacity
+                key={model.model}
+                style={[
+                  styles.modelButton,
+                  selectedModel === model.model && styles.modelButtonActive
+                ]}
+                onPress={() => handleModelChange(model.model)}
+                disabled={!model.isAvailable}
+              >
+                <Text style={[
+                  styles.modelButtonText,
+                  selectedModel === model.model && styles.modelButtonTextActive,
+                  !model.isAvailable && styles.modelButtonDisabled
+                ]}>
+                  {model.name}
+                </Text>
+                <Text style={styles.modelDescription}>{model.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* 시각화 */}
+        {visualization && (
+          <View style={styles.visualizationSection}>
+            <Text style={styles.sectionTitle}>꿈 시각화</Text>
+            <View style={styles.visualizationContainer}>
+              <Image source={{ uri: visualization.imageUrl }} style={styles.visualizationImage} />
+              <Text style={styles.visualizationDescription}>{visualization.description}</Text>
+            </View>
           </View>
         )}
+
+        {/* 요약 */}
+        <View style={styles.summarySection}>
+          <Text style={styles.sectionTitle}>꿈 요약</Text>
+          <View style={styles.summaryContainer}>
+            <Text style={styles.summaryText}>{analysis.summary}</Text>
+          </View>
+        </View>
 
         {/* 키워드 */}
-        {currentAnalysis.keywords && currentAnalysis.keywords.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔑 주요 키워드</Text>
-            <View style={styles.keywordContainer}>
-              {currentAnalysis.keywords.map((keyword, index) => (
-                <View key={index} style={styles.keywordTag}>
-                  <Text style={styles.keywordText}>{keyword}</Text>
-                </View>
-              ))}
-            </View>
+        <View style={styles.keywordsSection}>
+          <Text style={styles.sectionTitle}>주요 키워드</Text>
+          <View style={styles.keywordsContainer}>
+            {analysis.keywords.map((keyword, index) => (
+              <View key={index} style={styles.keywordTag}>
+                <Text style={styles.keywordText}>{keyword}</Text>
+              </View>
+            ))}
           </View>
-        )}
+        </View>
 
-        {/* 감정 흐름 */}
-        {currentAnalysis.emotional_flow_text && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💭 감정 흐름</Text>
-            <Text style={styles.sectionContent}>{currentAnalysis.emotional_flow_text}</Text>
+        {/* 감정 톤 */}
+        <View style={styles.emotionSection}>
+          <Text style={styles.sectionTitle}>감정 톤</Text>
+          <View style={styles.emotionContainer}>
+            <Text style={styles.emotionText}>{analysis.emotionalTone}</Text>
           </View>
-        )}
+        </View>
 
         {/* 상징 분석 */}
-        {currentAnalysis.symbol_analysis && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔮 상징 분석</Text>
-            {currentAnalysis.symbol_analysis.symbols && 
-             currentAnalysis.symbol_analysis.symbols.length > 0 ? (
-              currentAnalysis.symbol_analysis.symbols.map((symbol: any, index: number) => (
-                <View key={index} style={styles.symbolItem}>
-                  <Text style={styles.symbolName}>{symbol.symbol}</Text>
-                  <Text style={styles.symbolInterpretation}>{symbol.interpretation}</Text>
-                  {symbol.significance && (
-                    <Text style={styles.symbolSignificance}>
-                      의미: {symbol.significance}
-                    </Text>
-                  )}
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noDataText}>상징 분석 데이터가 없습니다.</Text>
-            )}
-          </View>
-        )}
-
-        {/* 데자뷰 분석 */}
-        {currentAnalysis.deja_vu_analysis && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🌀 데자뷰 분석</Text>
-            {currentAnalysis.deja_vu_analysis.related_dreams && 
-             currentAnalysis.deja_vu_analysis.related_dreams.length > 0 ? (
-              <>
-                <Text style={styles.dejaVuDescription}>
-                  이 꿈과 유사한 과거 꿈들을 찾았습니다:
+        <View style={styles.symbolsSection}>
+          <Text style={styles.sectionTitle}>상징 분석</Text>
+          {analysis.symbols.map((symbol, index) => (
+            <View key={index} style={styles.symbolItem}>
+              <View style={styles.symbolHeader}>
+                <Text style={styles.symbolName}>{symbol.symbol}</Text>
+                <Text style={styles.symbolConfidence}>
+                  {(symbol.confidence * 100).toFixed(0)}%
                 </Text>
-                {currentAnalysis.deja_vu_analysis.related_dreams.map((related: any, index: number) => (
-                  <View key={index} style={styles.relatedDreamItem}>
-                    <Text style={styles.relatedDreamTitle}>
-                      {related.title || '제목 없음'}
-                    </Text>
-                    <Text style={styles.relatedDreamDate}>
-                      {new Date(related.dream_date).toLocaleDateString()}
-                    </Text>
-                    <Text style={styles.relatedDreamSimilarity}>
-                      유사도: {(related.similarity_score * 100).toFixed(1)}%
-                    </Text>
-                  </View>
-                ))}
-              </>
-            ) : (
-              <Text style={styles.noDataText}>유사한 꿈을 찾지 못했습니다.</Text>
-            )}
-          </View>
-        )}
+              </View>
+              <Text style={styles.symbolMeaning}>{symbol.meaning}</Text>
+            </View>
+          ))}
+        </View>
 
-        {/* 반성적 질문 */}
-        {currentAnalysis.reflective_question && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🤔 성찰 질문</Text>
-            <View style={styles.questionContainer}>
-              <Text style={styles.questionText}>{currentAnalysis.reflective_question}</Text>
+        {/* 테마 */}
+        <View style={styles.themesSection}>
+          <Text style={styles.sectionTitle}>주요 테마</Text>
+          <View style={styles.themesContainer}>
+            {analysis.themes.map((theme, index) => (
+              <View key={index} style={styles.themeTag}>
+                <Text style={styles.themeText}>{theme}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 인사이트 */}
+        <View style={styles.insightsSection}>
+          <Text style={styles.sectionTitle}>AI 인사이트</Text>
+          {insights.map((insight, index) => (
+            <View key={index} style={styles.insightItem}>
+              <Text style={styles.insightText}>• {insight}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* 반성 질문 */}
+        <View style={styles.questionsSection}>
+          <Text style={styles.sectionTitle}>반성 질문</Text>
+          {analysis.reflectiveQuestions.map((question, index) => (
+            <View key={index} style={styles.questionItem}>
+              <Text style={styles.questionText}>{question}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* 추천사항 */}
+        <View style={styles.recommendationsSection}>
+          <Text style={styles.sectionTitle}>추천사항</Text>
+          {recommendations.map((recommendation, index) => (
+            <View key={index} style={styles.recommendationItem}>
+              <Text style={styles.recommendationText}>• {recommendation}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* 통계 */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>꿈 통계</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>명료도</Text>
+              <Text style={styles.statValue}>{(analysis.lucidityScore * 100).toFixed(0)}%</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>감정 강도</Text>
+              <Text style={styles.statValue}>{(analysis.emotionalIntensity * 100).toFixed(0)}%</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>꿈 타입</Text>
+              <Text style={styles.statValue}>{analysis.dreamType}</Text>
             </View>
           </View>
-        )}
-
-        {/* 분석 정보 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ℹ️ 분석 정보</Text>
-          <Text style={styles.analysisInfo}>
-            분석 완료: {new Date(currentAnalysis.created_at).toLocaleString()}
-          </Text>
         </View>
+
+        {/* 액션 버튼 */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShareAnalysis}>
+            <Text style={styles.shareButtonText}>📤 공유하기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveAnalysis}>
+            <Text style={styles.saveButtonText}>💾 저장하기</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 하단 여백 */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     );
   };
-
-  if (isLoading && !currentAnalysis) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#e94560" />
-        <Text style={styles.loadingText}>분석 결과를 불러오는 중...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>꿈 분석</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* 꿈 정보 */}
-      {currentDream && (
-        <View style={styles.dreamInfo}>
-          <Text style={styles.dreamTitle}>
-            {currentDream.title || '제목 없음'}
-          </Text>
-          <Text style={styles.dreamDate}>
-            {new Date(currentDream.dream_date).toLocaleDateString()}
-          </Text>
-          {currentDream.emotion_tags && currentDream.emotion_tags.length > 0 && (
-            <View style={styles.emotionTags}>
-              {currentDream.emotion_tags.map((emotion, index) => (
-                <View key={index} style={styles.emotionTag}>
-                  <Text style={styles.emotionTagText}>
-                    {EMOTION_LABELS[emotion as keyof typeof EMOTION_LABELS] || emotion}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* 분석 내용 */}
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {renderAnalysisContent()}
-      </ScrollView>
-
-      {/* 에러 메시지 */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={clearError}>
-            <Text style={styles.retryButtonText}>다시 시도</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {isLoading ? renderLoadingState() : renderAnalysisResult()}
     </View>
   );
 };
@@ -303,257 +312,311 @@ const DreamAnalysisScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#191D2E', // Night Sky Blue
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a2e',
+    padding: 24,
   },
   loadingText: {
-    color: '#ffffff',
-    fontSize: 16,
+    ...PersonalGreetingStyle,
+    color: '#FFDDA8',
+    textAlign: 'center',
     marginTop: 16,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
-  },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    color: '#e94560',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  placeholder: {
-    width: 40,
-  },
-  dreamInfo: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
-  },
-  dreamTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  dreamDate: {
-    color: '#888888',
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  emotionTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  emotionTag: {
-    backgroundColor: '#e94560',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  emotionTagText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+  loadingSubtext: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+    textAlign: 'center',
+    marginTop: 8,
   },
   content: {
     flex: 1,
+    padding: 24,
   },
-  analyzingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
     alignItems: 'center',
-    padding: 40,
+    marginBottom: 32,
+    paddingTop: 20,
   },
-  analyzingText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
+  title: {
+    ...AnalysisReportTitleStyle,
+    color: '#FFDDA8',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    ...EmotionalSubtitleStyle,
+    color: '#8F8C9B',
     textAlign: 'center',
   },
-  analyzingSubText: {
-    color: '#888888',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  noAnalysisContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  noAnalysisTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  noAnalysisText: {
-    color: '#888888',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  analyzeButton: {
-    backgroundColor: '#e94560',
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  analyzeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  analysisContent: {
-    padding: 20,
-  },
-  section: {
+  modelSection: {
     marginBottom: 24,
   },
   sectionTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...EmotionalSubtitleStyle,
+    color: '#FFDDA8',
+    marginBottom: 16,
+  },
+  modelScrollView: {
+    flexDirection: 'row',
+  },
+  modelButton: {
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    padding: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+    minWidth: 120,
+  },
+  modelButtonActive: {
+    backgroundColor: '#4A4063',
+    borderColor: '#FFDDA8',
+  },
+  modelButtonText: {
+    ...ButtonFontStyle,
+    color: '#EAE8F0',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  modelButtonTextActive: {
+    color: '#FFDDA8',
+  },
+  modelButtonDisabled: {
+    color: '#595566',
+  },
+  modelDescription: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+    fontSize: 10,
+  },
+  visualizationSection: {
+    marginBottom: 24,
+  },
+  visualizationContainer: {
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  visualizationImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
     marginBottom: 12,
   },
-  sectionContent: {
-    color: '#cccccc',
-    fontSize: 16,
+  visualizationDescription: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    textAlign: 'center',
+  },
+  summarySection: {
+    marginBottom: 24,
+  },
+  summaryContainer: {
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  summaryText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
     lineHeight: 24,
   },
-  keywordContainer: {
+  keywordsSection: {
+    marginBottom: 24,
+  },
+  keywordsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   keywordTag: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: '#4A4063',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
+  },
+  keywordText: {
+    ...SmallFontStyle,
+    color: '#FFDDA8',
+  },
+  emotionSection: {
+    marginBottom: 24,
+  },
+  emotionContainer: {
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#3d3d5c',
   },
-  keywordText: {
-    color: '#ffffff',
-    fontSize: 14,
+  emotionText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    textAlign: 'center',
+  },
+  symbolsSection: {
+    marginBottom: 24,
   },
   symbolItem: {
     backgroundColor: '#2d2d44',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  symbolHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   symbolName: {
-    color: '#e94560',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    ...BodyFontStyle,
+    color: '#FFDDA8',
+    fontWeight: '600',
   },
-  symbolInterpretation: {
-    color: '#cccccc',
-    fontSize: 14,
+  symbolConfidence: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+  },
+  symbolMeaning: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
     lineHeight: 20,
-    marginBottom: 4,
   },
-  symbolSignificance: {
-    color: '#888888',
-    fontSize: 12,
-    fontStyle: 'italic',
+  themesSection: {
+    marginBottom: 24,
   },
-  dejaVuDescription: {
-    color: '#cccccc',
-    fontSize: 14,
-    marginBottom: 12,
+  themesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  relatedDreamItem: {
+  themeTag: {
+    backgroundColor: '#e94560',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  themeText: {
+    ...SmallFontStyle,
+    color: '#ffffff',
+  },
+  insightsSection: {
+    marginBottom: 24,
+  },
+  insightItem: {
     backgroundColor: '#2d2d44',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
   },
-  relatedDreamTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  insightText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    lineHeight: 20,
   },
-  relatedDreamDate: {
-    color: '#888888',
-    fontSize: 12,
-    marginBottom: 4,
+  questionsSection: {
+    marginBottom: 24,
   },
-  relatedDreamSimilarity: {
-    color: '#4ecdc4',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  questionContainer: {
+  questionItem: {
     backgroundColor: '#2d2d44',
     borderRadius: 12,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#e94560',
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
   },
   questionText: {
-    color: '#ffffff',
-    fontSize: 16,
-    lineHeight: 24,
-    fontStyle: 'italic',
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    lineHeight: 20,
   },
-  analysisInfo: {
-    color: '#888888',
-    fontSize: 12,
+  recommendationsSection: {
+    marginBottom: 24,
   },
-  noDataText: {
-    color: '#888888',
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-  errorContainer: {
-    backgroundColor: '#ff6b6b',
-    padding: 16,
-    margin: 20,
+  recommendationItem: {
+    backgroundColor: '#2d2d44',
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
   },
-  errorText: {
-    color: '#ffffff',
-    fontSize: 14,
-    marginBottom: 8,
+  recommendationText: {
+    ...BodyFontStyle,
+    color: '#EAE8F0',
+    lineHeight: 20,
   },
-  retryButton: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignSelf: 'flex-start',
+  statsSection: {
+    marginBottom: 24,
   },
-  retryButtonText: {
-    color: '#ff6b6b',
-    fontSize: 14,
-    fontWeight: 'bold',
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#2d2d44',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    ...SmallFontStyle,
+    color: '#8F8C9B',
+    marginBottom: 4,
+  },
+  statValue: {
+    ...BodyFontStyle,
+    color: '#FFDDA8',
+    fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  shareButton: {
+    flex: 1,
+    backgroundColor: '#4A4063',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#595566',
+  },
+  shareButtonText: {
+    ...ButtonFontStyle,
+    color: '#FFDDA8',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#FFDDA8',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFDDA8',
+  },
+  saveButtonText: {
+    ...ButtonFontStyle,
+    color: '#191D2E',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
 

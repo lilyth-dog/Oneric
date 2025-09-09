@@ -23,8 +23,12 @@ interface DreamStore {
   hasPrevious: boolean;
   totalCount: number;
 
+  // Computed
+  recentDreams: Dream[];
+
   // Actions
   fetchDreams: (params?: any) => Promise<void>;
+  getDreams: () => Promise<void>;
   fetchDream: (dreamId: string) => Promise<void>;
   createDream: (dreamData: DreamCreate) => Promise<Dream>;
   updateDream: (dreamId: string, dreamUpdate: DreamUpdate) => Promise<Dream>;
@@ -36,7 +40,7 @@ interface DreamStore {
   reset: () => void;
 }
 
-export const useDreamStore = create<DreamStore>((set, get) => ({
+export const useDreamStore = create<DreamStore>((set, _get) => ({
   // Initial state
   dreams: [],
   currentDream: null,
@@ -203,6 +207,39 @@ export const useDreamStore = create<DreamStore>((set, get) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  getDreams: async () => {
+    set({ isLoading: true });
+    try {
+      const result = await dreamService.getDreams();
+      set({
+        dreams: result.dreams,
+        currentPage: result.page,
+        totalPages: Math.ceil(result.total_count / result.page_size),
+        hasNext: result.has_next,
+        hasPrevious: result.has_previous,
+        totalCount: result.total_count,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch dreams',
+        isLoading: false 
+      });
+    }
+  },
+
+  get recentDreams() {
+    const { dreams } = _get();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return dreams.filter(dream => 
+      new Date(dream.created_at) >= oneWeekAgo
+    ).sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   },
 
   reset: () => {

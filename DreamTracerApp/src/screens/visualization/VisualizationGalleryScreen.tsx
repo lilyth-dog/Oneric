@@ -1,276 +1,166 @@
 /**
  * 시각화 갤러리 화면
+ * 디자인 가이드에 따른 "고요한 탐험" 컨셉 구현
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
   Image,
-  Modal,
-  FlatList,
+  Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import visualizationService from '../../services/visualizationService';
+import { useNavigationStore } from '../../stores/navigationStore';
 
-interface VisualizationItem {
-  id: string;
-  dream_id: string;
-  dream_title: string;
-  image_path: string;
-  art_style: string;
-  created_at: string;
-}
+const { width } = Dimensions.get('window');
+const imageWidth = (width - 48) / 2;
 
 const VisualizationGalleryScreen: React.FC = () => {
-  const navigation = useNavigation();
-  
-  const [visualizations, setVisualizations] = useState<VisualizationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedVisualization, setSelectedVisualization] = useState<VisualizationItem | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const { goBack } = useNavigationStore();
+  const [selectedStyle, setSelectedStyle] = useState<string>('all');
 
-  useEffect(() => {
-    loadVisualizations();
-  }, []);
+  // 샘플 시각화 데이터 (실제로는 API에서 가져올 데이터)
+  const sampleVisualizations = [
+    {
+      id: '1',
+      title: '몽환적 수채화',
+      style: 'watercolor',
+      imageUrl: 'https://via.placeholder.com/300x300/4A4063/FFDDA8?text=수채화',
+      dreamTitle: '바다 위의 꿈',
+    },
+    {
+      id: '2',
+      title: '초현실주의 유화',
+      style: 'surreal',
+      imageUrl: 'https://via.placeholder.com/300x300/FFDDA8/191D2E?text=초현실',
+      dreamTitle: '날아다니는 집',
+    },
+    {
+      id: '3',
+      title: '디지털 아트',
+      style: 'digital',
+      imageUrl: 'https://via.placeholder.com/300x300/191D2E/FFDDA8?text=디지털',
+      dreamTitle: '미래 도시',
+    },
+    {
+      id: '4',
+      title: '인상주의',
+      style: 'impressionist',
+      imageUrl: 'https://via.placeholder.com/300x300/4A4063/EAE8F0?text=인상주의',
+      dreamTitle: '꽃밭에서의 산책',
+    },
+  ];
 
-  const loadVisualizations = async (pageNum: number = 1, refresh: boolean = false) => {
-    try {
-      if (refresh) {
-        setIsLoading(true);
-        setPage(1);
-      } else if (pageNum === 1) {
-        setIsLoading(true);
-      }
+  const artStyles = [
+    { id: 'all', name: '전체', icon: '🎨' },
+    { id: 'watercolor', name: '수채화', icon: '🖌️' },
+    { id: 'surreal', name: '초현실주의', icon: '🌌' },
+    { id: 'digital', name: '디지털', icon: '💻' },
+    { id: 'impressionist', name: '인상주의', icon: '🌻' },
+  ];
 
-      const skip = (pageNum - 1) * 20;
-      const data = await visualizationService.getVisualizationGallery(skip, 20);
-      
-      if (refresh || pageNum === 1) {
-        setVisualizations(data.visualizations);
-      } else {
-        setVisualizations(prev => [...prev, ...data.visualizations]);
-      }
-      
-      setHasMore(data.visualizations.length === 20);
-      setPage(pageNum);
-    } catch (error) {
-      Alert.alert('오류', '갤러리를 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const filteredVisualizations = selectedStyle === 'all' 
+    ? sampleVisualizations 
+    : sampleVisualizations.filter(v => v.style === selectedStyle);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await loadVisualizations(1, true);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (!isLoading && hasMore) {
-      loadVisualizations(page + 1);
-    }
-  };
-
-  const handleImagePress = (visualization: VisualizationItem) => {
-    setSelectedVisualization(visualization);
-    setSelectedImage(visualization.image_path);
-  };
-
-  const handleDeleteVisualization = async (visualizationId: string) => {
-    Alert.alert(
-      '시각화 삭제',
-      '이 시각화를 삭제하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await visualizationService.deleteVisualization(visualizationId);
-              setVisualizations(prev => 
-                prev.filter(v => v.id !== visualizationId)
-              );
-              Alert.alert('성공', '시각화가 삭제되었습니다.');
-            } catch (error) {
-              Alert.alert('오류', '시각화 삭제에 실패했습니다.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const renderVisualizationItem = ({ item }: { item: VisualizationItem }) => (
-    <View style={styles.visualizationCard}>
-      <TouchableOpacity
-        style={styles.imageContainer}
-        onPress={() => handleImagePress(item)}
-      >
-        <Image
-          source={{ uri: visualizationService.getImageUrl(item.image_path) }}
-          style={styles.visualizationImage}
-          resizeMode="cover"
-        />
-        <View style={styles.imageOverlay}>
-          <Text style={styles.overlayText}>🔍</Text>
-        </View>
-      </TouchableOpacity>
-      
-      <View style={styles.visualizationInfo}>
-        <Text style={styles.dreamTitle} numberOfLines={1}>
-          {item.dream_title}
-        </Text>
-        <Text style={styles.visualizationStyle}>
-          {visualizationService.getStyleKoreanName(item.art_style)}
-        </Text>
-        <Text style={styles.visualizationDate}>
-          {new Date(item.created_at).toLocaleDateString()}
-        </Text>
-      </View>
-      
-      <View style={styles.cardActions}>
+  const renderStyleFilter = () => (
+    <ScrollView 
+      horizontal 
+      showsHorizontalScrollIndicator={false}
+      style={styles.styleFilter}
+    >
+      {artStyles.map(style => (
         <TouchableOpacity
-          style={styles.viewButton}
-          onPress={() => (navigation as any).navigate('DreamDetail', { dreamId: item.dream_id })}
+          key={style.id}
+          style={[
+            styles.styleButton,
+            selectedStyle === style.id && styles.styleButtonActive
+          ]}
+          onPress={() => setSelectedStyle(style.id)}
         >
-          <Text style={styles.viewButtonText}>꿈 보기</Text>
+          <Text style={styles.styleIcon}>{style.icon}</Text>
+          <Text style={[
+            styles.styleText,
+            selectedStyle === style.id && styles.styleTextActive
+          ]}>
+            {style.name}
+          </Text>
         </TouchableOpacity>
-        
+      ))}
+    </ScrollView>
+  );
+
+  const renderVisualizationGrid = () => (
+    <View style={styles.grid}>
+      {filteredVisualizations.map((visualization) => (
         <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteVisualization(item.id)}
+          key={visualization.id}
+          style={styles.visualizationCard}
         >
-          <Text style={styles.deleteButtonText}>삭제</Text>
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: visualization.imageUrl }}
+              style={styles.visualizationImage}
+              resizeMode="cover"
+            />
+            <View style={styles.imageOverlay}>
+              <Text style={styles.styleLabel}>{visualization.title}</Text>
+            </View>
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.dreamTitle} numberOfLines={1}>
+              {visualization.dreamTitle}
+            </Text>
+            <Text style={styles.dreamDate}>2024.01.15</Text>
+          </View>
         </TouchableOpacity>
-      </View>
+      ))}
     </View>
   );
 
-  const renderImageModal = () => (
-    <Modal
-      visible={!!selectedImage}
-      transparent
-      animationType="fade"
-      onRequestClose={() => {
-        setSelectedImage(null);
-        setSelectedVisualization(null);
-      }}
-    >
-      <View style={styles.imageModalOverlay}>
-        <TouchableOpacity
-          style={styles.imageModalClose}
-          onPress={() => {
-            setSelectedImage(null);
-            setSelectedVisualization(null);
-          }}
-        >
-          <Text style={styles.imageModalCloseText}>✕</Text>
-        </TouchableOpacity>
-        
-        {selectedImage && (
-          <Image
-            source={{ uri: visualizationService.getImageUrl(selectedImage) }}
-            style={styles.fullScreenImage}
-            resizeMode="contain"
-          />
-        )}
-        
-        {selectedVisualization && (
-          <View style={styles.imageModalInfo}>
-            <Text style={styles.imageModalTitle}>
-              {selectedVisualization.dream_title}
-            </Text>
-            <Text style={styles.imageModalStyle}>
-              {visualizationService.getStyleKoreanName(selectedVisualization.art_style)}
-            </Text>
-            <Text style={styles.imageModalDate}>
-              {new Date(selectedVisualization.created_at).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-      </View>
-    </Modal>
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>🎨</Text>
+      <Text style={styles.emptyTitle}>아직 시각화된 꿈이 없습니다</Text>
+      <Text style={styles.emptySubtitle}>
+        꿈을 기록하고 AI가 아름다운 이미지로 변환해드릴게요
+      </Text>
+      <TouchableOpacity
+        style={styles.createButton}
+        onPress={() => goBack()}
+      >
+        <Text style={styles.createButtonText}>꿈 기록하기</Text>
+      </TouchableOpacity>
+    </View>
   );
-
-  const renderFooter = () => {
-    if (!isLoading) return null;
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#e94560" />
-      </View>
-    );
-  };
-
-  if (isLoading && visualizations.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#e94560" />
-        <Text style={styles.loadingText}>갤러리를 불러오는 중...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={goBack}>
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>시각화 갤러리</Text>
+        <Text style={styles.headerTitle}>꿈 갤러리</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* 통계 */}
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsText}>
-          총 {visualizations.length}개의 시각화
-        </Text>
-      </View>
+      <ScrollView style={styles.content}>
+        {/* 스타일 필터 */}
+        {renderStyleFilter()}
 
-      {/* 시각화 목록 */}
-      {visualizations.length === 0 ? (
-        <View style={styles.noVisualizationsContainer}>
-          <Text style={styles.noVisualizationsTitle}>시각화가 없습니다</Text>
-          <Text style={styles.noVisualizationsText}>
-            꿈을 시각화로 변환하면 여기에 표시됩니다.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={visualizations}
-          renderItem={renderVisualizationItem}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.visualizationGrid}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
-        />
-      )}
+        {/* 시각화 그리드 또는 빈 상태 */}
+        {filteredVisualizations.length > 0 ? (
+          renderVisualizationGrid()
+        ) : (
+          renderEmptyState()
+        )}
 
-      {/* 이미지 모달 */}
-      {renderImageModal()}
+        {/* 하단 여백 */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
     </View>
   );
 };
@@ -278,204 +168,142 @@ const VisualizationGalleryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a2e',
-  },
-  loadingText: {
-    color: '#ffffff',
-    fontSize: 16,
-    marginTop: 16,
+    backgroundColor: '#191D2E', // Night Sky Blue
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+    backgroundColor: '#4A4063', // Dawn Purple
   },
   backButton: {
     padding: 8,
   },
   backButtonText: {
-    color: '#e94560',
+    color: '#FFDDA8', // Starlight Gold
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
+    color: '#FFDDA8', // Starlight Gold
+    fontSize: 20,
     fontWeight: 'bold',
   },
   placeholder: {
     width: 40,
   },
-  statsContainer: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+  content: {
+    flex: 1,
+    padding: 24,
   },
-  statsText: {
-    color: '#888888',
-    fontSize: 14,
+  styleFilter: {
+    marginBottom: 24,
   },
-  visualizationGrid: {
-    padding: 16,
+  styleButton: {
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginRight: 12,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  styleButtonActive: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+  },
+  styleIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  styleText: {
+    color: '#8F8C9B', // Warm Grey 400
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  styleTextActive: {
+    color: '#191D2E', // Night Sky Blue
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   visualizationCard: {
-    flex: 1,
-    backgroundColor: '#2d2d44',
-    borderRadius: 12,
-    margin: 8,
+    width: imageWidth,
+    backgroundColor: '#4A4063', // Dawn Purple
+    borderRadius: 16,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
-    aspectRatio: 1,
   },
   visualizationImage: {
     width: '100%',
-    height: '100%',
+    height: imageWidth,
   },
   imageOverlay: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 16,
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
   },
-  overlayText: {
-    color: '#ffffff',
-    fontSize: 16,
+  styleLabel: {
+    color: '#FFDDA8', // Starlight Gold
+    fontSize: 12,
+    fontWeight: '500',
   },
-  visualizationInfo: {
+  cardContent: {
     padding: 12,
   },
   dreamTitle: {
-    color: '#ffffff',
+    color: '#EAE8F0', // Warm Grey 100
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 4,
   },
-  visualizationStyle: {
-    color: '#e94560',
+  dreamDate: {
+    color: '#8F8C9B', // Warm Grey 400
     fontSize: 12,
-    marginBottom: 4,
   },
-  visualizationDate: {
-    color: '#888888',
-    fontSize: 10,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#3d3d5c',
-  },
-  viewButton: {
-    flex: 1,
-    backgroundColor: '#4ecdc4',
-    paddingVertical: 8,
+  emptyState: {
     alignItems: 'center',
+    paddingVertical: 60,
   },
-  viewButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
   },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#ff6b6b',
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  noVisualizationsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  noVisualizationsTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  noVisualizationsText: {
-    color: '#888888',
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  footerLoader: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  imageModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageModalClose: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  imageModalCloseText: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  fullScreenImage: {
-    width: '90%',
-    height: '70%',
-  },
-  imageModalInfo: {
-    position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 12,
-    padding: 16,
-  },
-  imageModalTitle: {
-    color: '#ffffff',
+  emptyTitle: {
+    color: '#EAE8F0', // Warm Grey 100
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 8,
   },
-  imageModalStyle: {
-    color: '#e94560',
+  emptySubtitle: {
+    color: '#8F8C9B', // Warm Grey 400
     fontSize: 14,
-    marginBottom: 4,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  imageModalDate: {
-    color: '#888888',
-    fontSize: 12,
+  createButton: {
+    backgroundColor: '#FFDDA8', // Starlight Gold
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  createButtonText: {
+    color: '#191D2E', // Night Sky Blue
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
 

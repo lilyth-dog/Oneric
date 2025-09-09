@@ -4,7 +4,8 @@
 import { DreamAnalysis } from '../types/dream';
 import authService from './authService';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용
+const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
 
 interface AnalysisTaskStatus {
   task_id: string;

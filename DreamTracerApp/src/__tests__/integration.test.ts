@@ -196,7 +196,7 @@ describe('Integration Tests', () => {
         });
 
       // Dream store 테스트
-      const { fetchDreams, setCurrentDream } = useDreamStore.getState();
+      const { fetchDreams } = useDreamStore.getState();
       await fetchDreams();
       
       const dreamState = useDreamStore.getState();
