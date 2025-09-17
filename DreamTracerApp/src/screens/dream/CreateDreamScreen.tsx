@@ -17,6 +17,7 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useDreamStore } from '../../stores/dreamStore';
 import { DreamCreate, EmotionType, EMOTION_LABELS, DREAM_TYPE_LABELS, LUCIDITY_LABELS, SLEEP_QUALITY_LABELS } from '../../types/dream';
 import voiceService, { VoiceServiceCallbacks, RealtimeSTTResult } from '../../services/voiceService';
+import hapticService from '../../services/hapticService';
 import { 
   DreamRecordTitleStyle, 
   EmotionalSubtitleStyle, 
@@ -207,6 +208,7 @@ const CreateDreamScreen: React.FC = () => {
       };
 
       await createDream(dreamData);
+      await hapticService.dreamSaved();
       Alert.alert('성공', '꿈 조각이 안전하게 보관되었습니다!', [
         { text: '확인', onPress: () => goBack() }
       ]);
@@ -529,7 +531,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   title: {
-    ...DreamRecordTitleStyle,
+    ...EmotionalTitleStyle,
     color: '#FFDDA8', // Starlight Gold
     textAlign: 'center',
   },

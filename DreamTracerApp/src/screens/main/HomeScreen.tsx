@@ -17,6 +17,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useDreamStore } from '../../stores/dreamStore';
 import { useAuthStore } from '../../stores/authStore';
 import { Dream } from '../../types/dream';
+import hapticService from '../../services/hapticService';
+import DynamicBackground from '../../components/DynamicBackground';
 import { 
   PersonalGreetingStyle, 
   SpecialMessageStyle, 
@@ -85,13 +87,29 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  const getPersonalizedMessage = () => {
+    const hour = new Date().getHours();
+    const userName = user?.email?.split('@')[0] || '사용자';
+    
+    if (hour < 12) {
+      return `어젯밤의 꿈이 기억나시나요, ${userName}님?`;
+    } else if (hour < 18) {
+      return `오늘 하루는 어떠셨나요, ${userName}님?`;
+    } else {
+      return `잠들기 전, 마음을 차분히 정리해보세요, ${userName}님`;
+    }
+  };
+
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
       <Text style={styles.sectionTitle}>빠른 작업</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={[styles.quickActionButton, styles.primaryAction]}
-          onPress={() => navigate('CreateDream')}
+          onPress={async () => {
+            await hapticService.buttonPress();
+            navigate('CreateDream');
+          }}
         >
           <Text style={styles.quickActionIcon}>✨</Text>
           <Text style={styles.quickActionText}>꿈 기록</Text>
@@ -192,17 +210,18 @@ const HomeScreen: React.FC = () => {
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <DynamicBackground>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       {/* 헤더 */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>{getGreeting()}, {user?.email?.split('@')[0] || '사용자'}님</Text>
-          <Text style={styles.subGreeting}>오늘 밤 당신의 무의식은 어떤 이야기를 들려주었나요?</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.subGreeting}>{getPersonalizedMessage()}</Text>
         </View>
       </View>
 
@@ -217,18 +236,19 @@ const HomeScreen: React.FC = () => {
 
       {/* 하단 여백 */}
       <View style={styles.bottomSpacer} />
-    </ScrollView>
+      </ScrollView>
+    </DynamicBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191D2E', // Night Sky Blue
+    backgroundColor: 'transparent', // 동적 배경 사용
   },
   header: {
     padding: 24,
-    backgroundColor: '#191D2E',
+    backgroundColor: 'transparent',
   },
   greeting: {
     ...PersonalGreetingStyle,
