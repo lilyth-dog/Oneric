@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   inputLabel: {
-    ...SubtitleFontStyle,
+    ...DreamySubtitleStyle,
     color: '#FFDDA8', // Starlight Gold
     marginBottom: 8,
     fontSize: FontSizes.sm,
