@@ -4,6 +4,7 @@
  */
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import sttService, { STTResult, RealtimeSTTResult, STTSettings } from './sttService';
+export type { STTResult, RealtimeSTTResult, STTSettings };
 
 // 음성 서비스 상태
 export interface VoiceServiceState {
@@ -105,10 +106,10 @@ class VoiceService {
       this.recordingDuration = 0;
 
       console.log('VoiceService: 녹음 시작 -', filePath);
-      
+
       // 콜백 호출
       this.callbacks.onRecordingStart?.();
-      
+
       return filePath;
     } catch (error) {
       console.error('녹음 시작 실패:', error);
@@ -128,16 +129,16 @@ class VoiceService {
 
       this.state.isRecording = false;
       this.recordingDuration = (Date.now() - this.recordingStartTime) / 1000;
-      
+
       const path = this.state.currentRecordingPath;
       this.state.currentRecordingPath = null;
       this.recordingStartTime = 0;
 
       console.log('VoiceService: 녹음 중지 -', path, `(${this.recordingDuration.toFixed(1)}초)`);
-      
+
       // 콜백 호출
       this.callbacks.onRecordingStop?.(path || '');
-      
+
       return path || '';
     } catch (error) {
       console.error('녹음 중지 실패:', error);
@@ -160,21 +161,21 @@ class VoiceService {
       this.state.currentTranscription = '';
 
       console.log('VoiceService: STT 변환 시작 -', path);
-      
+
       // 콜백 호출
       this.callbacks.onTranscriptionStart?.();
 
       // STT 서비스 호출
       const result = await sttService.transcribeAudio(path, settings);
-      
+
       this.state.isTranscribing = false;
       this.state.currentTranscription = result.text;
 
       console.log('VoiceService: STT 변환 완료 -', result.text);
-      
+
       // 콜백 호출
       this.callbacks.onTranscriptionComplete?.(result);
-      
+
       return result;
     } catch (error) {
       this.state.isTranscribing = false;
@@ -206,7 +207,7 @@ class VoiceService {
           if (result.isFinal) {
             this.state.realtimeFinalText += result.finalText + ' ';
           }
-          
+
           // 콜백 호출
           this.callbacks.onRealtimeSTTResult?.(result);
         },
@@ -234,7 +235,7 @@ class VoiceService {
       }
 
       await sttService.stopRealtimeTranscription();
-      
+
       this.state.isRealtimeSTTActive = false;
       this.state.realtimePartialText = '';
 
@@ -256,7 +257,7 @@ class VoiceService {
       }
 
       console.log('VoiceService: 재생 시작 -', path);
-      
+
       // 시뮬레이션된 재생
       Alert.alert('재생', '녹음 파일을 재생합니다. (시뮬레이션)');
     } catch (error) {

@@ -57,7 +57,7 @@ class AIConnectionTestService {
         .map(model => this.testConnection(model.model));
 
       const results = await Promise.all(testPromises);
-      
+
       // 결과 저장
       results.forEach(result => {
         if (!this.testResults.has(result.model)) {
@@ -82,7 +82,7 @@ class AIConnectionTestService {
       console.log('AIConnectionTestService: 연결 테스트 시작 -', model);
 
       const startTime = Date.now();
-      
+
       // 모델 변경
       const switchSuccess = await aiService.switchModel(model);
       if (!switchSuccess) {
@@ -132,13 +132,13 @@ class AIConnectionTestService {
       console.log('AIConnectionTestService: 성능 테스트 시작 -', model, testCount + '회');
 
       const testDreamText = "어젯밤에 정말 이상한 꿈을 꿨어요. 하늘을 날아다니는 꿈이었는데, 새처럼 자유롭게 날 수 있었어요. 바람이 얼굴을 스치고 지나가는 느낌이 정말 좋았어요.";
-      
+
       const testResults: Array<{ success: boolean; responseTime: number; error?: string }> = [];
-      
+
       for (let i = 0; i < testCount; i++) {
         try {
           const startTime = Date.now();
-          
+
           // 간단한 분석 요청
           const analysisRequest = {
             dreamId: `test_${i}`,
@@ -147,17 +147,17 @@ class AIConnectionTestService {
           };
 
           await dreamAnalysisService.analyzeDream(analysisRequest);
-          
+
           const responseTime = Date.now() - startTime;
           testResults.push({ success: true, responseTime });
-          
+
           console.log(`AIConnectionTestService: 테스트 ${i + 1}/${testCount} 완료 - ${responseTime}ms`);
         } catch (error) {
           const responseTime = Date.now() - Date.now();
-          testResults.push({ 
-            success: false, 
-            responseTime: 0, 
-            error: error instanceof Error ? error.message : '알 수 없는 오류' 
+          testResults.push({
+            success: false,
+            responseTime: 0,
+            error: error instanceof Error ? error.message : '알 수 없는 오류'
           });
           console.error(`AIConnectionTestService: 테스트 ${i + 1}/${testCount} 실패:`, error);
         }
@@ -167,8 +167,8 @@ class AIConnectionTestService {
       const successfulTests = testResults.filter(r => r.success).length;
       const failedTests = testResults.filter(r => !r.success).length;
       const successfulResponseTimes = testResults.filter(r => r.success).map(r => r.responseTime);
-      const averageResponseTime = successfulResponseTimes.length > 0 
-        ? successfulResponseTimes.reduce((a, b) => a + b, 0) / successfulResponseTimes.length 
+      const averageResponseTime = successfulResponseTimes.length > 0
+        ? successfulResponseTimes.reduce((a, b) => a + b, 0) / successfulResponseTimes.length
         : 0;
       const successRate = (successfulTests / testCount) * 100;
       const errors = testResults.filter(r => !r.success).map(r => r.error || '알 수 없는 오류');
@@ -204,11 +204,11 @@ class AIConnectionTestService {
 
       // 연결 테스트 실행
       const connectionTests = await this.testAllConnections();
-      
+
       // 성능 테스트 실행 (연결된 모델들만)
       const connectedModels = connectionTests.filter(test => test.isConnected).map(test => test.model);
       const performanceTests: PerformanceTestResult[] = [];
-      
+
       for (const model of connectedModels) {
         try {
           const performanceTest = await this.runPerformanceTest(model, 3); // 3회 테스트
@@ -220,10 +220,10 @@ class AIConnectionTestService {
 
       // 추천 모델 결정
       const recommendedModel = this.determineRecommendedModel(connectionTests, performanceTests);
-      
+
       // 전체 상태 평가
       const overallStatus = this.evaluateOverallStatus(connectionTests, performanceTests);
-      
+
       // 요약 생성
       const summary = this.generateSummary(connectionTests, performanceTests, recommendedModel, overallStatus);
 
@@ -253,14 +253,14 @@ class AIConnectionTestService {
   ): AIModel {
     // 연결된 모델들 중에서 성능이 가장 좋은 모델 선택
     const connectedModels = connectionTests.filter(test => test.isConnected);
-    
+
     if (connectedModels.length === 0) {
       return AIModel.LLAMA_3_8B; // 기본값
     }
 
     // 성능 테스트 결과가 있는 모델들 중에서 선택
     const modelsWithPerformance = performanceTests.filter(test => test.successRate > 0);
-    
+
     if (modelsWithPerformance.length === 0) {
       return connectedModels[0].model; // 첫 번째 연결된 모델
     }
@@ -269,7 +269,7 @@ class AIConnectionTestService {
     const bestModel = modelsWithPerformance.reduce((best, current) => {
       const bestScore = best.successRate * 0.7 + (1000 / Math.max(best.averageResponseTime, 1)) * 0.3;
       const currentScore = current.successRate * 0.7 + (1000 / Math.max(current.averageResponseTime, 1)) * 0.3;
-      
+
       return currentScore > bestScore ? current : best;
     });
 
@@ -316,18 +316,18 @@ class AIConnectionTestService {
   ): string {
     const connectedCount = connectionTests.filter(test => test.isConnected).length;
     const totalCount = connectionTests.length;
-    
+
     let summary = `전체 ${totalCount}개 모델 중 ${connectedCount}개 모델이 연결되었습니다. `;
-    
+
     if (performanceTests.length > 0) {
       const averageSuccessRate = performanceTests.reduce((sum, test) => sum + test.successRate, 0) / performanceTests.length;
       const averageResponseTime = performanceTests.reduce((sum, test) => sum + test.averageResponseTime, 0) / performanceTests.length;
-      
+
       summary += `평균 성공률은 ${averageSuccessRate.toFixed(1)}%이고, 평균 응답 시간은 ${averageResponseTime.toFixed(0)}ms입니다. `;
     }
-    
+
     summary += `추천 모델은 ${recommendedModel}이며, 전체 상태는 ${overallStatus}입니다.`;
-    
+
     return summary;
   }
 
@@ -338,28 +338,28 @@ class AIConnectionTestService {
     if (model) {
       return this.testResults.get(model) || [];
     }
-    
+
     const allResults: ConnectionTestResult[] = [];
     this.testResults.forEach(results => {
       allResults.push(...results);
     });
-    
+
     return allResults;
   }
 
   /**
    * 성능 테스트 결과 조회
    */
-  getPerformanceResults(model?: AIModel): PerformanceTestResult | PerformanceTestResult[] {
+  getPerformanceResults(model?: AIModel): PerformanceTestResult | PerformanceTestResult[] | null {
     if (model) {
       return this.performanceResults.get(model) || null;
     }
-    
+
     const allResults: PerformanceTestResult[] = [];
     this.performanceResults.forEach(result => {
       allResults.push(result);
     });
-    
+
     return allResults;
   }
 
@@ -378,9 +378,9 @@ class AIConnectionTestService {
   async quickConnectionTest(): Promise<boolean> {
     try {
       console.log('AIConnectionTestService: 빠른 연결 테스트 시작');
-      
+
       const isConnected = await aiService.checkConnection();
-      
+
       console.log('AIConnectionTestService: 빠른 연결 테스트 완료 -', isConnected ? '성공' : '실패');
       return isConnected;
     } catch (error) {

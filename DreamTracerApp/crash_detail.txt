@@ -1,0 +1,20 @@
+12-23 02:05:53.435  6871  6952 E libc++abi: terminating due to uncaught exception of type facebook::jni::JniException: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:06:06.880  7045  7045 F DEBUG   : Abort message: 'terminating due to uncaught exception of type facebook::jni::JniException: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:35:05.605 10075 10492 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:35:05.618 10075 10097 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:37:49.437 10075 10541 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:37:49.455 10075 10097 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:41:12.762 10075 10661 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:41:12.763 10075 10097 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:41:47.069 10691 10726 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:41:47.098 10691 10711 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:46:12.265 10691 10912 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 02:46:12.270 10691 10711 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:25:01.060 10945 11817 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:25:01.067 10945 10965 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:28:17.494 10945 11918 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:28:17.498 10945 10965 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:30:02.836 10945 11975 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:30:02.841 10945 10965 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:30:43.797 12010 12045 E unknown:ReactNative: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:
+12-23 03:30:43.803 12010 12031 E unknown:ReactHost: Caused by: com.facebook.react.common.JavascriptException: [runtime not ready]: ReferenceError: Property 'SubtitleFontStyle' doesn't exist, stack:

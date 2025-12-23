@@ -25,6 +25,8 @@ import {
   SmallFontStyle,
   PersonalCelebrationStyle
 } from '../../styles/fonts';
+import { AITagSuggestion, VoiceWaveform } from '../../components/dream';
+import GlassView from '../../components/common/GlassView';
 
 const CreateDreamScreen: React.FC = () => {
   const { goBack } = useNavigationStore();
@@ -52,6 +54,8 @@ const CreateDreamScreen: React.FC = () => {
   const [realtimeText, setRealtimeText] = useState('');
   const [characterInput, setCharacterInput] = useState('');
   const [symbolInput, setSymbolInput] = useState('');
+  const [audioAmplitude, setAudioAmplitude] = useState(0.5);
+  const [aiSelectedTags, setAiSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
     // 음성 서비스 콜백 설정
@@ -79,7 +83,7 @@ const CreateDreamScreen: React.FC = () => {
           setBodyText(prev => prev + (prev ? ' ' : '') + result.finalText);
         }
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         Alert.alert('오류', error.message);
       }
     };
@@ -249,7 +253,7 @@ const CreateDreamScreen: React.FC = () => {
         </View>
 
         {/* 꿈 내용 */}
-        <View style={styles.section}>
+        <GlassView style={styles.section}>
           <Text style={styles.sectionTitle}>꿈 내용 *</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -260,11 +264,43 @@ const CreateDreamScreen: React.FC = () => {
             numberOfLines={6}
             textAlignVertical="top"
           />
-        </View>
+          
+          {/* AI 태그 추천 */}
+          <AITagSuggestion
+            dreamContent={bodyText}
+            selectedTags={aiSelectedTags}
+            onTagSelect={(tag) => {
+              setAiSelectedTags(prev => [...prev, tag.id]);
+              // 감정 태그인 경우 emotionTags에도 추가
+              if (tag.type === 'emotion') {
+                const emotionKey = tag.text as EmotionType;
+                if (!emotionTags.includes(emotionKey)) {
+                  setEmotionTags(prev => [...prev, emotionKey]);
+                }
+              }
+              // 상징 태그인 경우 symbols에 추가
+              if (tag.type === 'symbol' || tag.type === 'keyword') {
+                if (!symbols.includes(tag.text)) {
+                  setSymbols(prev => [...prev, tag.text]);
+                }
+              }
+            }}
+            onTagRemove={(tagId) => {
+              setAiSelectedTags(prev => prev.filter(id => id !== tagId));
+            }}
+          />
+        </GlassView>
 
         {/* 음성 녹음 및 STT */}
-        <View style={styles.section}>
+        <GlassView style={styles.section}>
           <Text style={styles.sectionTitle}>음성 녹음 및 변환 (선택사항)</Text>
+          
+          {/* 음성 파형 시각화 */}
+          <VoiceWaveform
+            isRecording={isRecording || isRealtimeSTTActive}
+            duration={recordingTime}
+            amplitude={audioAmplitude}
+          />
           
           {/* 녹음 컨트롤 */}
           <View style={styles.recordingContainer}>
@@ -333,7 +369,7 @@ const CreateDreamScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </View>
+        </GlassView>
 
         {/* 명료도 */}
         <View style={styles.section}>

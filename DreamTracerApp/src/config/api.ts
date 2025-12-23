@@ -1,16 +1,14 @@
-/**
- * API 설정
- * Vercel에서 호스팅되는 AI 서버 연결
- */
+import { Platform } from 'react-native';
 
 export const API_CONFIG = {
   // Vercel 도메인 (dreamtraer.space 또는 Vercel 자동 도메인)
-  baseURL: 'https://dreamtraer.space', // 또는 Vercel에서 제공하는 도메인
+  // baseURL: 'https://dreamtraer.space', // 또는 Vercel에서 제공하는 도메인
+  baseURL: Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000',
   timeout: 30000,
-  
+
   // 개발용 로컬 서버 (필요시)
   localURL: 'http://localhost:8000',
-  
+
   // API 엔드포인트들
   endpoints: {
     health: '/health',
@@ -18,7 +16,7 @@ export const API_CONFIG = {
     visualizeDream: '/api/v1/dreams/visualize',
     getModels: '/api/v1/models',
   },
-  
+
   // 헤더 설정
   headers: {
     'Content-Type': 'application/json',
@@ -29,20 +27,19 @@ export const API_CONFIG = {
 // API 호출 함수
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_CONFIG.baseURL}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
       ...API_CONFIG.headers,
       ...options.headers,
     },
-    timeout: API_CONFIG.timeout,
   });
-  
+
   if (!response.ok) {
     throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
   }
-  
+
   return response.json();
 };
 

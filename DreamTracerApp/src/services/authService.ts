@@ -4,8 +4,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthToken, LoginCredentials, RegisterData, OnboardingData } from '../types/auth';
 
-// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용
-const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
+import Config from '../config/config';
+
+const { API_BASE_URL } = Config;
 
 class AuthService {
   private token: string | null = null;
@@ -15,30 +16,10 @@ class AuthService {
    */
   async register(userData: RegisterData): Promise<AuthToken> {
     try {
-      // 로컬 개발용 - 실제 API 대신 시뮬레이션
-      console.log('Registering user:', userData);
-      
-      // 시뮬레이션된 응답
-      const mockResult: AuthToken = {
-        access_token: 'mock_access_token_' + Date.now(),
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: {
-          id: 'user_' + Date.now(),
-          email: userData.email,
-          name: userData.name,
-          auth_provider: 'firebase',
-          subscription_plan: 'free',
-          hasCompletedOnboarding: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      };
 
-      await this.setToken(mockResult.access_token);
-      await this.setUserData(mockResult.user);
-      
-      return mockResult;
+      // 백엔드가 "mock_token:{email}"을 받으면 자동으로 유저를 생성하거나 찾아서 토큰을 발급함
+      const mockFirebaseToken = `mock_token:${userData.email}`;
+      return await this.firebaseAuth(mockFirebaseToken);
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -50,35 +31,15 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthToken> {
     try {
-      // 로컬 개발용 - 실제 API 대신 시뮬레이션
-      console.log('Logging in user:', credentials.email);
-      
-      // 간단한 검증 (실제로는 서버에서 처리)
-      if (!credentials.email || !credentials.password) {
-        throw new Error('이메일과 비밀번호를 입력해주세요.');
+
+
+      if (!credentials.email) {
+        throw new Error('이메일을 입력해주세요.');
       }
 
-      // 시뮬레이션된 응답
-      const mockResult: AuthToken = {
-        access_token: 'mock_access_token_' + Date.now(),
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: {
-          id: 'user_' + Date.now(),
-          email: credentials.email,
-          name: credentials.email.split('@')[0],
-          auth_provider: 'firebase',
-          subscription_plan: 'free',
-          hasCompletedOnboarding: true, // 로그인 시에는 온보딩 완료로 가정
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      };
-
-      await this.setToken(mockResult.access_token);
-      await this.setUserData(mockResult.user);
-      
-      return mockResult;
+      // 백엔드 Mock Auth 사용
+      const mockFirebaseToken = `mock_token:${credentials.email}`;
+      return await this.firebaseAuth(mockFirebaseToken);
     } catch (error) {
       console.error('Login error:', error);
       throw error;

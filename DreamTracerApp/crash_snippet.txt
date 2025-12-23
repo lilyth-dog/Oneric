@@ -1,0 +1,100 @@
+12-23 01:53:52.831   726   726 D SystemServerTiming: StartLightsService
+12-23 01:53:52.831   726   726 I SystemServiceManager: Starting com.android.server.lights.LightsService
+12-23 01:53:52.845   726   726 D SystemServerTiming: StartDisplayOffloadService
+12-23 01:53:52.845   726   726 D SystemServerTiming: StartDisplayManager
+12-23 01:53:52.845   726   726 I SystemServiceManager: Starting com.android.server.display.DisplayManagerService
+12-23 01:53:52.859   726   726 D PluginManager: loading plugins from:
+12-23 01:53:52.859   726   726 D PluginManager: loaded Plugins:[]
+12-23 01:53:52.860   726   726 D SystemServerTiming: WaitForDisplay
+12-23 01:53:52.860   726   726 I SystemServiceManager: Starting phase 100
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.security.FileIntegrityService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.pm.Installer
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.os.DeviceIdentifiersPolicyService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.flags.FeatureFlagsService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.uri.UriGrantsManagerService$Lifecycle
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.powerstats.PowerStatsService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.permission.access.AccessCheckingService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.wm.ActivityTaskManagerService$Lifecycle
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.am.ActivityManagerService$Lifecycle
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.pm.DataLoaderManagerService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.power.PowerManagerService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.power.ThermalManagerService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.recoverysystem.RecoverySystemService$Lifecycle
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.lights.LightsService
+12-23 01:53:52.860   726   726 D SystemServerTiming: OnBootPhase_100_com.android.server.display.DisplayManagerService
+12-23 01:53:52.878   726   767 W LocalDisplayAdapter: DisplayModeSpecs base mode no longer available, using currently active mode.
+12-23 01:53:52.879   726   767 E DisplayManagerService: Default display is null for info request from uid 1000
+12-23 01:53:52.886   726   767 I DisplayDeviceRepository: Display device added: DisplayDeviceInfo{"Built-in Screen": uniqueId="local:4619827259835644672", 1280 x 2856, modeId 1, renderFrameRate 60.000004, hasArrSupport false, frameRateCategoryRate FrameRateCategoryRate {normal=60.0, high=90.0}, supportedRefreshRates [60.000004], defaultModeId 1, userPreferredModeId -1, supportedModes [{id=1, width=1280, height=2856, fps=60.000004, vsync=60.000004, synthetic=false, alternativeRefreshRates=[], supportedHdrTypes=[]}], colorMode 0, supportedColorModes [0], hdrCapabilities HdrCapabilities{mSupportedHdrTypes=[], mMaxLuminance=500.0, mMaxAverageLuminance=500.0, mMinLuminance=0.0}, isForceSdr false, allmSupported false, gameContentTypeSupported false, density 480, 480.0 x 480.0 dpi, appVsyncOff 1000000, presDeadline 16666666, touch INTERNAL, rotation 0, type INTERNAL, address {port=0, model=0x401cec6a7a2b7b}, deviceProductInfo DeviceProductInfo{name=EMU_display_0, manufacturerPnpId=GGL, productId=1, modelYear=null, manufactureDate=ManufactureDate{week=27, year=2006}, connectionToSinkType=1}, state UNKNOWN, committedState UNKNOWN, frameRateOverride , brightnessMinimum 0.035433073, brightnessMaximum 1.0, brightnessDefault 0.39763778, brightnessDim 0.05, hdrSdrRatio NaN, FLAG_ALLOWED_TO_BE_DEFAULT_DISPLAY, FLAG_ROTATES_WITH_CONTENT, FLAG_SECURE, FLAG_SUPPORTS_PROTECTED_BUFFERS, FLAG_TRUSTED, installOrientation 0, displayShape DisplayShape{ spec=2047849127 displayWidth=1280 displayHeight=2856 physicalPixelDisplaySizeRatio=1.0 rotation=0 offsetX=0 offsetY=0 scale=1.0}}
+12-23 01:53:52.887   726   767 I LogicalDisplayMapper: Applying layout: [{dispId: 0(ON), displayGroupName: , addr: {port=0, model=0x401cec6a7a2b7b}, mThermalBrightnessThrottlingMapId: null, mRefreshRateZoneId: null, mLeadDisplayId: -1, mLeadDisplayAddress: null, mThermalRefreshRateThrottlingMapId: null, mPowerThrottlingMapId: null}], Previous layout: null
+12-23 01:53:52.887   726   767 I LogicalDisplayMapper: Setting new display group 0 for display 0, from previous group: null
+12-23 01:53:52.892   726   726 D SystemServerTiming: StartDomainVerificationService
+12-23 01:53:52.896   726   726 D SystemServerTiming: StartPackageManagerService
+12-23 01:53:52.896   726   726 I Watchdog: Pausing HandlerChecker: main thread for reason: packagemanagermain. Pause count: 1
+12-23 01:53:52.898   726   726 D PackageManagerTiming: create package manager
+12-23 01:53:52.903   726   726 D PackageManagerTiming: createSubComponents
+12-23 01:53:52.913   726   726 E UserManagerService: No user list file
+12-23 01:53:52.913   726   726 E UserManagerService: userlist.xml not found, fallback to single user
+12-23 01:53:53.006   726   726 W FileUtils: Failed to chmod(/data/system/packages.list): android.system.ErrnoException: chmod failed: ENOENT (No such file or directory)
+12-23 01:53:53.010   726   726 D PackageManagerTiming: get system config
+12-23 01:53:53.010   726   726 D PackageManagerTiming: addSharedUsers
+12-23 01:53:53.019   726   726 D SELinuxMMAC: Using policy file /system/etc/selinux/plat_mac_permissions.xml
+12-23 01:53:53.026   726   726 D SELinuxMMAC: Using policy file /system_ext/etc/selinux/system_ext_mac_permissions.xml
+12-23 01:53:53.026   726   726 D SELinuxMMAC: Using policy file /product/etc/selinux/product_mac_permissions.xml
+12-23 01:53:53.027   726   726 D SELinuxMMAC: Using policy file /vendor/etc/selinux/vendor_mac_permissions.xml
+12-23 01:53:53.027   726   726 D SELinuxMMAC: Using policy file /odm/etc/selinux/odm_mac_permissions.xml
+12-23 01:53:53.027   726   726 D PackageManagerTiming: loadFallbacks
+12-23 01:53:53.029   726   726 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.033   726   726 D PackageManagerTiming: read user settings
+12-23 01:53:53.033   726   726 I PackageManager: No package manager settings file
+12-23 01:53:53.035   726   726 D PackageManagerTiming: setFirstBoot: 
+12-23 01:53:53.041   726   726 I AccessPersistence: /data/misc/apexdata/com.android.permission/access.abx not found
+12-23 01:53:53.042   726   726 I AccessPersistence: /data/misc_de/0/apexdata/com.android.permission/access.abx not found
+12-23 01:53:53.042   726   726 I LegacyAppOpStateParser: No existing app ops /data/system/appops.xml; starting empty
+12-23 01:53:53.047   726   726 D PackageManager: Directories scanned as system partitions: [/system:0, /vendor:524288, /odm:4194304, /oem:262144, /product:1048576, /system_ext:2097152, /apex/com.android.neuralnetworks:58720256, /apex/com.android.extservices:58720256, /apex/com.android.cellbroadcast:58720256, /apex/com.android.devicelock:41943040, /apex/com.android.scheduling:58720256, /apex/com.android.mediaprovider:58720256, /apex/com.android.hardware.uwb:42467328, /apex/com.android.hardware.authsecret:42467328, /apex/com.android.conscrypt:58720256, /apex/com.android.hardware.gatekeeper:42467328, /apex/com.android.hardware.neuralnetworks:42467328, /apex/com.android.uwb:58720256, /apex/com.google.android.widevine:42467328, /apex/com.android.sdkext:58720256, /apex/com.android.appsearch:58720256, /apex/com.android.nfcservices:58720256, /apex/com.android.ondevicepersonalization:58720256, /apex/com.android.profiling:58720256, /apex/com.android.media.swcodec:58720256, /apex/com.android.os.statsd:58720256, /apex/com.android.crashrecovery:58720256, /apex/com.android.compos:44040192, /apex/com.android.i18n:41943040, /apex/com.android.wifi:58720256, /apex/com.android.runtime:41943040, /apex/com.android.media:58720256, /apex/com.android.hardware.contexthub:42467328, /apex/com.android.art:58720256, /apex/com.android.hardware.cas:42467328, /apex/com.android.hardware.thermal:42467328, /apex/com.android.bt:58720256, /apex/com.android.apex.cts.shim:41943040, /apex/com.android.resolv:58720256, /apex/com.android.hardware.dumpstate:42467328, /apex/com.android.healthfitness:58720256, /apex/com.android.tzdata:41943040, /apex/com.android.rkpd:58720256, /apex/com.android.virt:41943040, /apex/com.android.uprobestats:58720256, /apex/com.android.ipsec:58720256, /apex/com.android.adservices:58720256, /apex/com.android.adbd:58720256, /apex/com.android.configinfrastructure:58720256, /apex/com.android.tethering:58720256, /apex/com.android.hardware.threadnetwork:42467328, /apex/com.android.permission:58720256, /apex/com.android.hardware.vibrator:42467328, /apex/com.android.hardware.rebootescrow:42467328, /apex/com.android.hardware.power:42467328]
+12-23 01:53:53.108   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.108   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.124   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.130   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.132   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.135   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.147   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.152   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.152   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.157   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.157   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.164   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.168   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.179   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.180   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.181   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.185   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.185   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.187   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.193   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.196   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.198   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.204   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.210   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.219   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.227   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.228   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.230   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.234   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.238   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.239   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.240   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.245   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.247   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.248   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.255   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.259   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.267   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.273   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.276   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.283   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.288   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.295   726   807 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.304   726   806 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.305   726   805 V Configuration: Updating configuration, locales updated from [] to [en_US]
+12-23 01:53:53.311   726   808 V Configuration: Updating configuration, locales updated from [] to [en_US]

@@ -2,20 +2,24 @@
  * 서버 동기화 서비스
  * 분석 결과, 통계, 커뮤니티 공유 데이터를 서버에 저장
  */
-import { 
-  ServerDreamData, 
-  DreamAnalysisResult, 
-  CommunityPost, 
-  UserPlan, 
+import {
+  ServerDreamData,
+  DreamAnalysisResult,
+  CommunityPost,
+  UserPlan,
   SubscriptionPlan,
   PLAN_LIMITS,
-  SyncStatus 
+  SyncStatus
 } from '../types/storage';
 import { LocalDreamData } from '../types/storage';
 import localStorageService from './localStorageService';
+import authService from './authService';
+
+import { API_CONFIG } from '../config/api';
 
 class ServerSyncService {
-  private baseUrl = 'https://api.ggumgyeol.com'; // 실제 API URL로 변경
+  // private baseUrl = 'https://api.ggumgyeol.com'; // 실제 API URL로 변경
+  private baseUrl = API_CONFIG.baseURL;
 
   // 꿈 데이터를 서버에 동기화 (원본 텍스트 제외)
   async syncDreamToServer(localDream: LocalDreamData): Promise<ServerDreamData> {
@@ -56,16 +60,16 @@ class ServerSyncService {
       }
 
       const syncedDream: ServerDreamData = await response.json();
-      
+
       // 로컬 동기화 상태 업데이트
       await localStorageService.updateSyncStatus(localDream.id, SyncStatus.SYNCED);
-      
+
       return syncedDream;
     } catch (error) {
       // 동기화 실패 시 상태 업데이트
       await localStorageService.updateSyncStatus(
-        localDream.id, 
-        SyncStatus.FAILED, 
+        localDream.id,
+        SyncStatus.FAILED,
         error instanceof Error ? error.message : '알 수 없는 오류'
       );
       throw error;
@@ -95,8 +99,8 @@ class ServerSyncService {
 
   // 커뮤니티에 꿈 공유 (글자 수 제한 적용)
   async shareToCommunity(
-    dreamId: string, 
-    sharedText: string, 
+    dreamId: string,
+    sharedText: string,
     sharedImage?: string
   ): Promise<CommunityPost> {
     try {
@@ -138,10 +142,10 @@ class ServerSyncService {
       }
 
       const communityPost: CommunityPost = await response.json();
-      
+
       // 사용량 업데이트
       await this.updateFeatureUsage('image_uploads', sharedImage ? 1 : 0);
-      
+
       return communityPost;
     } catch (error) {
       console.error('커뮤니티 공유 실패:', error);
@@ -226,7 +230,7 @@ class ServerSyncService {
   async syncPendingDreams(): Promise<void> {
     try {
       const pendingDreams = await localStorageService.getPendingSyncDreams();
-      
+
       for (const dream of pendingDreams) {
         try {
           await this.syncDreamToServer(dream);
@@ -242,7 +246,11 @@ class ServerSyncService {
   // 인증 토큰 조회 (실제 구현에서는 authStore에서 가져와야 함)
   private async getAuthToken(): Promise<string> {
     // 실제 구현에서는 authStore에서 토큰을 가져와야 함
-    return 'dummy_token';
+    const token = await authService.getToken();
+    if (!token) {
+      throw new Error('인증 토큰이 없습니다. 로그인이 필요합니다.');
+    }
+    return token;
   }
 
   // 네트워크 연결 상태 확인
@@ -250,7 +258,6 @@ class ServerSyncService {
     try {
       const response = await fetch(`${this.baseUrl}/api/v1/health`, {
         method: 'HEAD',
-        timeout: 5000
       });
       return response.ok;
     } catch (error) {

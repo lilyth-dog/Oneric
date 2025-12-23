@@ -118,14 +118,14 @@ class HybridDataManager {
 
   // 커뮤니티에 꿈 공유 (글자 수 제한 적용)
   async shareDreamToCommunity(
-    dreamId: string, 
-    sharedText: string, 
+    dreamId: string,
+    sharedText: string,
     sharedImage?: string
   ): Promise<CommunityPost> {
     try {
       // 사용자 플랜 확인
       const userPlan = await serverSyncService.getUserPlan();
-      
+
       // 글자 수 제한 확인
       const limits = this.getPlanLimits(userPlan.plan);
       if (sharedText.length > limits.communityTextLimit) {
@@ -142,7 +142,7 @@ class HybridDataManager {
 
       // 서버에 공유
       const communityPost = await serverSyncService.shareToCommunity(dreamId, sharedText, sharedImage);
-      
+
       return communityPost;
     } catch (error) {
       console.error('커뮤니티 공유 실패:', error);
@@ -211,13 +211,30 @@ class HybridDataManager {
       }
 
       const result = await response.json();
-      
+
       // 사용량 업데이트
       await serverSyncService.updateFeatureUsage('visualizations', 1);
-      
+
       return result.imageUrl;
     } catch (error) {
       console.error('꿈 시각화 요청 실패:', error);
+      throw error;
+    }
+  }
+
+  // 꿈 분석 결과 저장
+  async saveAnalysisResult(dreamId: string, analysis: any): Promise<void> {
+    try {
+      // 네트워크가 사용 가능하면 서버에 동기화
+      if (await serverSyncService.isNetworkAvailable()) {
+        try {
+          await serverSyncService.saveAnalysisResult(dreamId, analysis);
+        } catch (error) {
+          console.warn('분석 결과 서버 저장 실패:', error);
+        }
+      }
+    } catch (error) {
+      console.error('분석 결과 저장 실패:', error);
       throw error;
     }
   }
@@ -259,7 +276,7 @@ class HybridDataManager {
       const localUsage = await localStorageService.getStorageUsage();
       // 서버 사용량은 별도 API로 조회 (구현 필요)
       const serverUsage = { total: 0 }; // 임시값
-      
+
       return { local: localUsage, server: serverUsage };
     } catch (error) {
       console.error('저장소 사용량 조회 실패:', error);
@@ -289,7 +306,7 @@ class HybridDataManager {
         visualizationLimit: -1
       }
     };
-    
+
     return limits[plan];
   }
 

@@ -26,12 +26,16 @@ import {
   BodyFontStyle,
   SmallFontStyle
 } from '../../styles/fonts';
+import { EmotionHeatmap, WeeklyDreamChart } from '../../components/charts';
+import GlassView from '../../components/common/GlassView';
+import MascotBubble from '../../components/mascot/MascotBubble';
+import SkeletonLoader from '../../components/common/SkeletonLoader';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
   const { navigate } = useNavigationStore();
-  const { dreams, recentDreams, getDreams } = useDreamStore();
+  const { dreams, recentDreams, getDreams, isLoading } = useDreamStore();
   const { user, logout } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -86,7 +90,7 @@ const HomeScreen: React.FC = () => {
   };
 
   const renderQuickActions = () => (
-    <View style={styles.quickActionsContainer}>
+    <GlassView style={styles.quickActionsContainer}>
       <Text style={styles.sectionTitle}>빠른 작업</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
@@ -115,20 +119,67 @@ const HomeScreen: React.FC = () => {
         
         <TouchableOpacity
           style={styles.quickActionButton}
-          onPress={handleLogout}
+          onPress={() => navigate('CommunityFeed')}
         >
-          <Text style={styles.quickActionIcon}>🚪</Text>
-          <Text style={styles.quickActionText}>로그아웃</Text>
+          <Text style={styles.quickActionIcon}>🌍</Text>
+          <Text style={styles.quickActionText}>커뮤니티</Text>
         </TouchableOpacity>
+      </View>
+    </GlassView>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <SkeletonLoader width={100} height={20} style={{ marginBottom: 8 }} />
+          <SkeletonLoader width={180} height={32} />
+        </View>
+        <SkeletonLoader width={40} height={40} borderRadius={20} />
+      </View>
+
+      <View style={styles.content}>
+        {/* Quick Actions Skeleton */}
+        <View style={styles.quickActionsContainer}>
+          <SkeletonLoader width={80} height={20} style={{ marginBottom: 16 }} />
+          <View style={styles.quickActionsGrid}>
+            {[1, 2, 3, 4].map(i => (
+              <SkeletonLoader key={i} width={(width - 48 - 36) / 4} height={80} borderRadius={16} />
+            ))}
+          </View>
+        </View>
+
+        {/* Stats Skeleton */}
+        <GlassView style={styles.statsContainer}>
+          <SkeletonLoader width={60} height={20} style={{ marginBottom: 16 }} />
+          <View style={styles.statsGrid}>
+            {[1, 2, 3].map(i => (
+              <View key={i} style={styles.statItem}>
+                <SkeletonLoader width={30} height={24} style={{ marginBottom: 4 }} />
+                <SkeletonLoader width={40} height={14} />
+              </View>
+            ))}
+          </View>
+        </GlassView>
+
+        {/* Chart Skeleton */}
+        <GlassView style={styles.chartSection}>
+          <SkeletonLoader width={120} height={24} style={{ marginBottom: 16 }} />
+          <SkeletonLoader width="100%" height={140} />
+        </GlassView>
       </View>
     </View>
   );
 
+  if (isLoading && !refreshing && dreams.length === 0) {
+    return renderLoadingState();
+  }
+
   const renderRecentDreams = () => (
-    <View style={styles.recentDreamsContainer}>
+    <GlassView style={styles.recentDreamsContainer}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>최근 꿈</Text>
-        <TouchableOpacity onPress={() => navigate('CreateDream')}>
+        <TouchableOpacity onPress={() => navigate('DreamHistory')}>
           <Text style={styles.seeAllText}>모두 보기</Text>
         </TouchableOpacity>
       </View>
@@ -166,11 +217,11 @@ const HomeScreen: React.FC = () => {
           ))}
         </ScrollView>
       )}
-    </View>
+    </GlassView>
   );
 
   const renderStats = () => (
-    <View style={styles.statsContainer}>
+    <GlassView style={styles.statsContainer}>
       <Text style={styles.sectionTitle}>통계</Text>
       <View style={styles.statsGrid}>
         <View style={styles.statItem}>
@@ -188,8 +239,64 @@ const HomeScreen: React.FC = () => {
           <Text style={styles.statLabel}>자각몽</Text>
         </View>
       </View>
-    </View>
+    </GlassView>
   );
+
+  // 주간 차트 데이터 계산
+  const getWeeklyChartData = () => {
+    const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+    const today = new Date();
+    const data = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayDreams = dreams.filter(d => {
+        const dreamDate = new Date(d.created_at).toISOString().split('T')[0];
+        return dreamDate === dateStr;
+      });
+      
+      data.push({
+        day: DAYS[date.getDay()],
+        count: dayDreams.length,
+        lucid: dayDreams.some(d => (d.lucidity_level || 0) >= 4),
+      });
+    }
+    
+    return data;
+  };
+
+  // 감정 히트맵 데이터 계산
+  const getEmotionData = () => {
+    const emotionMap: { [key: string]: { icon: string; count: number; color: string } } = {
+      '평온': { icon: '😌', count: 0, color: '#4ECDC4' },
+      '불안': { icon: '😰', count: 0, color: '#FF6B6B' },
+      '행복': { icon: '😊', count: 0, color: '#FFD93D' },
+      '영감': { icon: '✨', count: 0, color: '#A78BFA' },
+      '슬픔': { icon: '😢', count: 0, color: '#60A5FA' },
+      '흥분': { icon: '🤩', count: 0, color: '#F472B6' },
+    };
+    
+    // 실제 구현에서는 dreams의 emotion 필드를 분석
+    // 임시로 랜덤 데이터 생성 (실제 데이터 연동 시 수정)
+    dreams.forEach(dream => {
+      const emotions = Object.keys(emotionMap);
+      const randomEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+      if (emotionMap[randomEmotion]) {
+        emotionMap[randomEmotion].count++;
+      }
+    });
+    
+    const total = dreams.length || 1;
+    return Object.entries(emotionMap).map(([emotion, data]) => ({
+      emotion,
+      icon: data.icon,
+      percentage: Math.round((data.count / total) * 100),
+      color: data.color,
+    }));
+  };
 
   return (
     <ScrollView
@@ -202,7 +309,22 @@ const HomeScreen: React.FC = () => {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>{getGreeting()}, {user?.email?.split('@')[0] || '사용자'}님</Text>
-          <Text style={styles.subGreeting}>오늘 밤 당신의 무의식은 어떤 이야기를 들려주었나요?</Text>
+          <MascotBubble 
+            text={
+              new Date().getHours() < 12 
+                ? "좋은 아침이에요! 어젯밤 꿈은 기억나시나요? 🌤️" 
+                : "오늘 하루도 고생하셨어요. 자기 전 꿈 기록, 잊지 마세요! 🌙"
+            } 
+            mood={new Date().getHours() < 12 ? 'happy' : 'calm'}
+          />
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigate('Profile')}
+          >
+            <Text style={styles.profileIcon}>👤</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -211,6 +333,16 @@ const HomeScreen: React.FC = () => {
 
       {/* 통계 */}
       {renderStats()}
+
+      {/* 주간 꿈 차트 */}
+      <GlassView style={styles.chartSection}>
+        <WeeklyDreamChart data={getWeeklyChartData()} />
+      </GlassView>
+
+      {/* 감정 히트맵 */}
+      <GlassView style={styles.chartSection}>
+        <EmotionHeatmap emotions={getEmotionData()} />
+      </GlassView>
 
       {/* 최근 꿈 */}
       {renderRecentDreams()}
@@ -241,11 +373,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   quickActionsContainer: {
-    padding: 24,
-    backgroundColor: '#4A4063', // Dawn Purple
+    // GlassView handles background/padding
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
   },
   sectionTitle: {
     ...EmotionalTitleStyle,
@@ -281,11 +411,9 @@ const styles = StyleSheet.create({
     color: '#EAE8F0',
   },
   statsContainer: {
-    padding: 24,
-    backgroundColor: '#4A4063',
+    // GlassView handles background/padding
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -306,11 +434,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   recentDreamsContainer: {
-    padding: 24,
-    backgroundColor: '#4A4063',
+    // GlassView handles background/padding
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
+  },
+  content: {
+    paddingBottom: 40,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -381,6 +510,26 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2d2d44',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3d3d5c',
+  },
+  profileIcon: {
+    fontSize: 20,
+  },
+  chartSection: {
+    marginHorizontal: 16,
   },
 });
 

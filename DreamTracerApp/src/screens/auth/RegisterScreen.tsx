@@ -282,17 +282,16 @@ const styles = StyleSheet.create({
     borderColor: '#595566', // Warm Grey 600
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-    gap: 12,
+    flexDirection: 'column',
+    marginTop: 24,
+    gap: 16,
   },
   registerButton: {
     backgroundColor: '#FFDDA8', // Starlight Gold
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 18,
     alignItems: 'center',
-    flex: 1,
+    width: '100%',
     shadowColor: '#FFDDA8',
     shadowOffset: {
       width: 0,
@@ -310,23 +309,23 @@ const styles = StyleSheet.create({
   registerButtonText: {
     ...BodyFontStyle,
     color: '#191D2E', // Night Sky Blue
-    fontSize: FontSizes.base,
-    fontWeight: FontWeights.semibold,
+    fontSize: 18,
+    fontWeight: FontWeights.bold,
   },
   backButton: {
     backgroundColor: 'transparent',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#4A4063', // Dawn Purple
-    flex: 1,
+    width: '100%',
   },
   backButtonText: {
     ...BodyFontStyle,
     color: '#FFDDA8', // Starlight Gold
-    fontSize: FontSizes.base,
-    fontWeight: FontWeights.semibold,
+    fontSize: 18,
+    fontWeight: FontWeights.bold,
   },
   footer: {
     alignItems: 'center',

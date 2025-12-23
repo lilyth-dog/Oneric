@@ -1,0 +1,7 @@
+﻿src/screens/dream/CreateDreamScreen.tsx(19,47): error TS2614: Module '"../../services/voiceService"' has no exported member 'RealtimeSTTResult'. Did you mean to use 'import RealtimeSTTResult from "../../services/voiceService"' instead?
+src/services/aiConnectionTest.ts(355,7): error TS2322: Type 'PerformanceTestResult | null' is not assignable to type 'PerformanceTestResult | PerformanceTestResult[]'.
+  Type 'null' is not assignable to type 'PerformanceTestResult | PerformanceTestResult[]'.
+src/services/apiTest.ts(25,31): error TS18046: 'error' is of type 'unknown'.
+src/services/apiTest.ts(47,34): error TS18046: 'error' is of type 'unknown'.
+src/services/apiTest.ts(71,30): error TS18046: 'error' is of type 'unknown'.
+src/services/dreamAnalysisService.ts(128,33): error TS2339: Property 'saveAnalysisResult' does not exist on type 'HybridDataManager'.

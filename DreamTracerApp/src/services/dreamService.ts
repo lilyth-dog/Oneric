@@ -1,15 +1,16 @@
 /**
  * 꿈 서비스
  */
-import { 
-  Dream, DreamCreate, DreamUpdate, DreamListResponse, 
-  DreamStats, AudioUploadResponse, DreamAnalysis 
+import {
+  Dream, DreamCreate, DreamUpdate, DreamListResponse,
+  DreamStats, AudioUploadResponse, DreamAnalysis
 } from '../types/dream';
 import authService from './authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용
-const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
+import Config from '../config/config';
+
+const { API_BASE_URL } = Config;
 
 class DreamService {
   private async getAuthHeaders() {
@@ -25,36 +26,20 @@ class DreamService {
    */
   async createDream(dreamData: DreamCreate): Promise<Dream> {
     try {
-      // 로컬 개발용 - AsyncStorage에 저장
-      console.log('Creating dream:', dreamData);
-      
-      const newDream: Dream = {
-        id: 'dream_' + Date.now(),
-        user_id: 'user_' + Date.now(),
-        title: dreamData.title || '제목 없는 꿈',
-        body_text: dreamData.body_text || '',
-        dream_date: dreamData.dream_date,
-        dream_type: dreamData.dream_type || 'normal',
-        lucidity_level: dreamData.lucidity_level || 1,
-        sleep_quality: dreamData.sleep_quality || 3,
-        emotion_tags: dreamData.emotion_tags || [],
-        symbols: dreamData.symbols || [],
-        characters: dreamData.characters || [],
-        location: dreamData.location || '',
-        audio_file_path: dreamData.audio_file_path || undefined,
-        analysis_status: 'pending',
-        is_shared: dreamData.is_shared || false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const headers = await this.getAuthHeaders();
 
-      // 로컬 저장소에 저장
-      const existingDreams = await AsyncStorage.getItem('dreams');
-      const dreams = existingDreams ? JSON.parse(existingDreams) : [];
-      dreams.push(newDream);
-      await AsyncStorage.setItem('dreams', JSON.stringify(dreams));
+      const response = await fetch(`${API_BASE_URL}/dreams/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(dreamData),
+      });
 
-      return newDream;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '꿈 기록 생성에 실패했습니다');
+      }
+
+      return await response.json();
     } catch (error) {
       console.error('Create dream error:', error);
       throw error;
@@ -73,48 +58,30 @@ class DreamService {
     emotion_filter?: string[];
   } = {}): Promise<DreamListResponse> {
     try {
-      // 로컬 개발용 - AsyncStorage에서 조회
-      const existingDreams = await AsyncStorage.getItem('dreams');
-      let dreams = existingDreams ? JSON.parse(existingDreams) : [];
+      const headers = await this.getAuthHeaders();
+      const queryParams = new URLSearchParams();
 
-      // 필터링 적용
-      if (params.dream_type) {
-        dreams = dreams.filter((dream: Dream) => dream.dream_type === params.dream_type);
-      }
-      
+      if (params.skip) queryParams.append('skip', params.skip.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.start_date) queryParams.append('start_date', params.start_date);
+      if (params.end_date) queryParams.append('end_date', params.end_date);
+      if (params.dream_type) queryParams.append('dream_type', params.dream_type);
+
       if (params.emotion_filter && params.emotion_filter.length > 0) {
-        dreams = dreams.filter((dream: Dream) => 
-          dream.emotion_tags?.some(emotion => params.emotion_filter!.includes(emotion))
-        );
+        params.emotion_filter.forEach(tag => queryParams.append('emotion_filter', tag));
       }
 
-      // 날짜 필터링
-      if (params.start_date) {
-        dreams = dreams.filter((dream: Dream) => dream.dream_date >= params.start_date!);
+      const response = await fetch(`${API_BASE_URL}/dreams/?${queryParams.toString()}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '꿈 목록 조회에 실패했습니다');
       }
-      if (params.end_date) {
-        dreams = dreams.filter((dream: Dream) => dream.dream_date <= params.end_date!);
-      }
 
-      // 정렬 (최신순)
-      dreams.sort((a: Dream, b: Dream) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      // 페이지네이션
-      const skip = params.skip || 0;
-      const limit = params.limit || 20;
-      const paginatedDreams = dreams.slice(skip, skip + limit);
-
-      return {
-        dreams: paginatedDreams,
-        total_count: dreams.length,
-        total: dreams.length,
-        page: Math.floor(skip / limit) + 1,
-        page_size: limit,
-        has_next: skip + limit < dreams.length,
-        has_previous: skip > 0,
-      };
+      return await response.json();
     } catch (error) {
       console.error('Get dreams error:', error);
       throw error;
@@ -126,16 +93,20 @@ class DreamService {
    */
   async getDream(dreamId: string): Promise<Dream> {
     try {
-      // 로컬 개발용 - AsyncStorage에서 조회
-      const existingDreams = await AsyncStorage.getItem('dreams');
-      const dreams = existingDreams ? JSON.parse(existingDreams) : [];
-      
-      const dream = dreams.find((d: Dream) => d.id === dreamId);
-      if (!dream) {
-        throw new Error('꿈을 찾을 수 없습니다');
+      const headers = await this.getAuthHeaders();
+
+      const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        // 404 handled by backend
+        const error = await response.json();
+        throw new Error(error.detail || '꿈을 찾을 수 없습니다');
       }
 
-      return dream;
+      return await response.json();
     } catch (error) {
       console.error('Get dream error:', error);
       throw error;
@@ -148,7 +119,7 @@ class DreamService {
   async updateDream(dreamId: string, dreamUpdate: DreamUpdate): Promise<Dream> {
     try {
       const headers = await this.getAuthHeaders();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}`, {
         method: 'PUT',
         headers,
@@ -173,7 +144,7 @@ class DreamService {
   async deleteDream(dreamId: string): Promise<void> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}`, {
         method: 'DELETE',
         headers: {
@@ -197,7 +168,7 @@ class DreamService {
   async analyzeDream(dreamId: string): Promise<DreamAnalysis> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}/analyze`, {
         method: 'POST',
         headers: {
@@ -223,7 +194,7 @@ class DreamService {
   async getDreamStats(): Promise<DreamStats> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/stats/overview`, {
         method: 'GET',
         headers: {
@@ -249,7 +220,7 @@ class DreamService {
   async uploadAudio(audioFile: any): Promise<AudioUploadResponse> {
     try {
       const token = await authService.getToken();
-      
+
       const formData = new FormData();
       formData.append('audio_file', {
         uri: audioFile.uri,
@@ -289,7 +260,7 @@ class DreamService {
         skip: skip.toString(),
         limit: limit.toString(),
       });
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/search?${queryParams}`, {
         method: 'GET',
         headers: {

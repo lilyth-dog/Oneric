@@ -14,7 +14,7 @@ export const Fonts = {
     thin: 'Pretendard-Thin',
     extrabold: 'Pretendard-ExtraBold',
   },
-  
+
   // 감성적 요소 폰트 - 몽환적이고 서정적 (15% 사용)
   emotional: {
     regular: 'Paperlogy-4Regular',
@@ -26,13 +26,13 @@ export const Fonts = {
     extrabold: 'Paperlogy-8ExtraBold',
     black: 'Paperlogy-9Black',
   },
-  
+
   // 개인적 터치 폰트 - 따뜻하고 친근한 손글씨 느낌 (5% 사용)
   personal: {
     regular: 'Yangjin-Regular',
     bold: 'Yangjin-Regular', // 양진체는 하나의 스타일만 있음
   },
-  
+
   // 보조 폰트들 - 특별한 상황에서만 사용
   secondary: {
     // 통계/데이터용
@@ -44,7 +44,7 @@ export const Fonts = {
     // 친숙한 안내용
     friendly: 'Pretendard-Regular',
   },
-  
+
   // 기본 폰트 (폰트 로딩 실패시 대체)
   fallback: {
     regular: 'System',
@@ -88,12 +88,14 @@ export const BodyFontStyle = {
   fontFamily: Fonts.primary.regular,
   fontSize: FontSizes.base,
   fontWeight: FontWeights.regular,
+  lineHeight: 24, // 150% of 16px
 };
 
 export const SmallFontStyle = {
   fontFamily: Fonts.primary.regular,
   fontSize: FontSizes.sm,
   fontWeight: FontWeights.regular,
+  lineHeight: 20, // ~143% of 14px
 };
 
 export const ButtonFontStyle = {
@@ -102,12 +104,19 @@ export const ButtonFontStyle = {
   fontWeight: FontWeights.medium,
 };
 
+export const SubtitleFontStyle = {
+  fontFamily: Fonts.primary.medium,
+  fontSize: FontSizes.lg,
+  fontWeight: FontWeights.medium,
+}
+
 // ===== 감성적 요소 스타일 (페이퍼로지) =====
 export const EmotionalTitleStyle = {
   fontFamily: Fonts.emotional.bold,
   fontSize: FontSizes['2xl'],
   fontWeight: FontWeights.bold,
   letterSpacing: 0.5,
+  lineHeight: 34, // ~140% of 24px
 };
 
 export const EmotionalSubtitleStyle = {
@@ -115,6 +124,7 @@ export const EmotionalSubtitleStyle = {
   fontSize: FontSizes.lg,
   fontWeight: FontWeights.medium,
   letterSpacing: 0.3,
+  lineHeight: 27, // 150% of 18px
 };
 
 export const SpecialMessageStyle = {
@@ -123,7 +133,30 @@ export const SpecialMessageStyle = {
   fontWeight: FontWeights.regular,
   fontStyle: 'italic' as const,
   letterSpacing: 0.2,
+  lineHeight: 24,
 };
+
+// Aliases for compatibility with Login/Register screens
+export const DreamyLogoStyle = {
+  fontFamily: Fonts.emotional.extrabold,
+  fontSize: FontSizes['4xl'],
+  fontWeight: FontWeights.extrabold,
+  letterSpacing: 1.5,
+};
+
+export const ElegantTitleStyle = {
+  ...EmotionalTitleStyle
+};
+
+export const DreamySubtitleStyle = {
+  ...EmotionalSubtitleStyle
+};
+
+export const EnglishDreamyStyle = {
+  fontFamily: Fonts.primary.regular,
+  fontSize: FontSizes.base
+}
+
 
 // ===== 개인적 터치 스타일 (양진체) =====
 export const PersonalGreetingStyle = {

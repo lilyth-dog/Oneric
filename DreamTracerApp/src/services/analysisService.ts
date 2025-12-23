@@ -3,9 +3,10 @@
  */
 import { DreamAnalysis } from '../types/dream';
 import authService from './authService';
+import { API_CONFIG } from '../config/api';
 
-// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용
-const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
+// Android 에뮬레이터에서는 localhost 대신 10.0.2.2 사용 (API_CONFIG에서 처리됨)
+const API_BASE_URL = `${API_CONFIG.baseURL}/api/v1`;
 
 interface AnalysisTaskStatus {
   task_id: string;
@@ -58,7 +59,7 @@ class AnalysisService {
   async getDreamAnalysis(dreamId: string): Promise<DreamAnalysis> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}/analysis`, {
         method: 'GET',
         headers: {
@@ -84,7 +85,7 @@ class AnalysisService {
   async requestDreamAnalysis(dreamId: string): Promise<{ task_id: string; status: string }> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/dreams/${dreamId}/analyze`, {
         method: 'POST',
         headers: {
@@ -131,7 +132,7 @@ class AnalysisService {
   async getDailyInsights(): Promise<{ insight: DailyInsight; date: string }> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/analysis/insights/daily`, {
         method: 'GET',
         headers: {
@@ -157,7 +158,7 @@ class AnalysisService {
   async getDreamPatterns(days: number = 30): Promise<DreamPatterns> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/analysis/patterns?days=${days}`, {
         method: 'GET',
         headers: {
@@ -183,7 +184,7 @@ class AnalysisService {
   async getDreamNetwork(): Promise<DreamNetwork> {
     try {
       const token = await authService.getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/analysis/network`, {
         method: 'GET',
         headers: {

@@ -81,7 +81,8 @@ class AIService {
     language: 'ko'
   };
 
-  private baseUrl = 'https://api.ggumgyeol.com/ai'; // 실제 AI API URL
+  // private baseUrl = 'https://api.ggumgyeol.com/ai'; // 실제 AI API URL
+  private baseUrl = API_CONFIG.baseURL; // 공통 설정 사용
 
   constructor() {
     console.log('AIService: 초기화 완료');
@@ -94,16 +95,21 @@ class AIService {
   async checkConnection(): Promise<boolean> {
     try {
       console.log('AIService: 연결 상태 확인 중...');
-      
+
       // 실제 구현에서는 AI 서버에 ping 요청
+      // AbortController를 사용한 타임아웃 구현
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${this.baseUrl}/health`, {
         method: 'GET',
-        timeout: 5000
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       this.state.isConnected = response.ok;
       console.log('AIService: 연결 상태 -', this.state.isConnected ? '연결됨' : '연결 실패');
-      
+
       return this.state.isConnected;
     } catch (error) {
       this.state.isConnected = false;
@@ -156,7 +162,7 @@ class AIService {
       }
 
       const result: DreamAnalysisResult = await response.json();
-      
+
       this.state.isProcessing = false;
       this.state.lastAnalysisTime = Date.now();
       this.state.totalAnalyses++;
@@ -168,12 +174,12 @@ class AIService {
     } catch (error) {
       this.state.isProcessing = false;
       console.error('AIService: 꿈 분석 실패:', error);
-      
+
       // 오프라인 모드에서 시뮬레이션된 결과 반환
       if (error instanceof Error && error.message.includes('연결')) {
         return this.getSimulatedAnalysis(dreamText);
       }
-      
+
       throw error;
     }
   }
@@ -216,7 +222,7 @@ class AIService {
       }
 
       const result: DreamVisualizationResult = await response.json();
-      
+
       this.state.isProcessing = false;
 
       const duration = (Date.now() - startTime) / 1000;
@@ -226,12 +232,12 @@ class AIService {
     } catch (error) {
       this.state.isProcessing = false;
       console.error('AIService: 시각화 생성 실패:', error);
-      
+
       // 오프라인 모드에서 시뮬레이션된 결과 반환
       if (error instanceof Error && error.message.includes('연결')) {
         return this.getSimulatedVisualization(dreamText);
       }
-      
+
       throw error;
     }
   }
@@ -242,13 +248,13 @@ class AIService {
   async switchModel(newModel: AIModel): Promise<boolean> {
     try {
       console.log('AIService: 모델 변경 -', newModel);
-      
+
       this.settings.model = newModel;
       this.state.currentModel = newModel;
-      
+
       // 새 모델 연결 테스트
       const isConnected = await this.checkConnection();
-      
+
       if (isConnected) {
         console.log('AIService: 모델 변경 성공');
         return true;
@@ -391,13 +397,13 @@ class AIService {
   async initialize(): Promise<void> {
     try {
       console.log('AIService: 초기화 시작');
-      
+
       // 연결 상태 확인
       await this.checkConnection();
-      
+
       // 기본 모델 설정
       this.state.currentModel = this.settings.model;
-      
+
       console.log('AIService: 초기화 완료');
     } catch (error) {
       console.error('AIService: 초기화 실패:', error);
@@ -416,7 +422,7 @@ class AIService {
       lastAnalysisTime: 0,
       totalAnalyses: 0
     };
-    
+
     this.settings = {
       model: AIModel.LLAMA_3_8B,
       temperature: 0.7,

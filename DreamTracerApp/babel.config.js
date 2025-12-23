@@ -21,8 +21,6 @@ module.exports = {
     ],
     // 불필요한 코드 제거
     ['transform-remove-console', { exclude: ['error', 'warn'] }],
-    // React Native 성능 최적화
-    'react-native-reanimated/plugin',
   ],
   env: {
     production: {

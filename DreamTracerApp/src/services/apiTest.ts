@@ -12,7 +12,7 @@ export class APITestService {
     try {
       console.log('🏥 서버 상태 확인 중...');
       const response = await checkServerHealth();
-      
+
       return {
         success: true,
         message: '서버 연결 성공!',
@@ -22,7 +22,7 @@ export class APITestService {
       console.error('❌ 서버 연결 실패:', error);
       return {
         success: false,
-        message: `서버 연결 실패: ${error.message}`
+        message: `서버 연결 실패: ${(error as Error).message}`
       };
     }
   }
@@ -34,7 +34,7 @@ export class APITestService {
     try {
       console.log('🤖 사용 가능한 모델 확인 중...');
       const response = await getAvailableModels();
-      
+
       return {
         success: true,
         message: '모델 목록 조회 성공!',
@@ -44,7 +44,7 @@ export class APITestService {
       console.error('❌ 모델 목록 조회 실패:', error);
       return {
         success: false,
-        message: `모델 목록 조회 실패: ${error.message}`
+        message: `모델 목록 조회 실패: ${(error as Error).message}`
       };
     }
   }
@@ -56,9 +56,9 @@ export class APITestService {
     try {
       console.log('🔮 꿈 분석 테스트 중...');
       const testDream = "어젯밤에 하늘을 날아다니는 꿈을 꿨어요. 정말 자유롭고 평화로웠습니다.";
-      
+
       const response = await analyzeDream(testDream, 'dialogpt-small');
-      
+
       return {
         success: true,
         message: '꿈 분석 성공!',
@@ -68,7 +68,7 @@ export class APITestService {
       console.error('❌ 꿈 분석 실패:', error);
       return {
         success: false,
-        message: `꿈 분석 실패: ${error.message}`
+        message: `꿈 분석 실패: ${(error as Error).message}`
       };
     }
   }
@@ -83,20 +83,20 @@ export class APITestService {
     overallSuccess: boolean;
   }> {
     console.log('🚀 전체 API 테스트 시작...');
-    
+
     const serverHealth = await this.testServerHealth();
     const availableModels = await this.testAvailableModels();
     const dreamAnalysis = await this.testDreamAnalysis();
-    
+
     const overallSuccess = serverHealth.success && availableModels.success && dreamAnalysis.success;
-    
+
     console.log('📊 테스트 결과:', {
       serverHealth: serverHealth.success,
       availableModels: availableModels.success,
       dreamAnalysis: dreamAnalysis.success,
       overallSuccess
     });
-    
+
     return {
       serverHealth,
       availableModels,
