@@ -15,6 +15,8 @@ import {
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useDreamStore } from '../../stores/dreamStore';
+import ConstellationMap from '../../components/profile/ConstellationMap'; // Imported
+import GlassView from '../../components/common/GlassView';
 import { 
   EmotionalTitleStyle, 
   EmotionalSubtitleStyle, 
@@ -47,6 +49,23 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  // Gamification Logic
+  const totalDreams = dreams.length;
+  const level = Math.floor(totalDreams / 5) + 1; // Level up every 5 dreams
+  const nextLevelParams = {
+      current: totalDreams % 5,
+      target: 5
+  };
+  
+  const getLevelName = (lvl: number) => {
+      if (lvl <= 1) return '별똥별 (Meteor)';
+      if (lvl <= 3) return '위성 (Satellite)';
+      if (lvl <= 5) return '행성 (Planet)';
+      if (lvl <= 10) return '항성 (Star)';
+      if (lvl <= 20) return '성운 (Nebula)';
+      return '은하수 (Galaxy)';
+  };
+
   return (
     <View style={styles.container}>
       {/* 헤더 */}
@@ -59,18 +78,30 @@ const ProfileScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* 프로필 정보 */}
+        {/* 프로필 정보 & 별자리 지도 */}
         <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
-            </Text>
+          <View style={styles.constellationContainer}>
+             <ConstellationMap level={level} totalDreams={totalDreams} height={220} />
+             
+             {/* Avatar Overlay */}
+             <View style={styles.avatarOverlay}>
+                <View style={styles.avatarContainer}>
+                    <Text style={styles.avatarText}>
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </Text>
+                </View>
+                <Text style={styles.userName}>{user?.name || '사용자'}</Text>
+                <View style={styles.levelBadge}>
+                    <Text style={styles.levelText}>Lv.{level} {getLevelName(level)}</Text>
+                </View>
+             </View>
           </View>
-          <Text style={styles.userName}>{user?.name || '사용자'}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-          <View style={styles.planBadge}>
-            <Text style={styles.planText}>FREE PLAN</Text>
+
+          {/* 경험치 바 */}
+          <View style={styles.xpBarContainer}>
+              <View style={[styles.xpBarFill, { width: `${(nextLevelParams.current / nextLevelParams.target) * 100}%` }]} />
           </View>
+          <Text style={styles.xpText}>다음 별자리까지 {nextLevelParams.target - nextLevelParams.current}개의 꿈이 필요해요</Text>
         </View>
 
         {/* 통계 요약 */}
@@ -185,7 +216,18 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 20,
+    marginBottom: 10,
+  },
+  constellationContainer: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+  },
+  avatarOverlay: {
+      position: 'absolute',
+      alignItems: 'center',
   },
   avatarContainer: {
     width: 80,
@@ -213,18 +255,37 @@ const styles = StyleSheet.create({
     color: '#8F8C9B',
     marginBottom: 12,
   },
-  planBadge: {
-    backgroundColor: '#2d2d44',
+  levelBadge: {
+    backgroundColor: 'rgba(255, 221, 168, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3d3d5c',
+    borderColor: '#FFDDA8',
+    marginTop: 8,
   },
-  planText: {
+  levelText: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#FFDDA8',
+  },
+  xpBarContainer: {
+      width: '80%',
+      height: 6,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      borderRadius: 3,
+      marginTop: 10,
+      marginBottom: 8,
+     overflow: 'hidden',
+  },
+  xpBarFill: {
+      height: '100%',
+      backgroundColor: '#FFDDA8',
+      borderRadius: 3,
+  },
+  xpText: {
+      ...SmallFontStyle,
+      color: '#8F8C9B',
   },
   statsContainer: {
     flexDirection: 'row',

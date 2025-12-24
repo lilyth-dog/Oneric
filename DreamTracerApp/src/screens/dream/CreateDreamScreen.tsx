@@ -25,7 +25,9 @@ import {
   SmallFontStyle,
   PersonalCelebrationStyle
 } from '../../styles/fonts';
-import { AITagSuggestion, VoiceWaveform } from '../../components/dream';
+import AITagSuggestion from '../../components/dream/AITagSuggestion';
+import VoiceWaveform from '../../components/dream/VoiceWaveform';
+import DreamCatcher from '../../components/dream/DreamCatcher'; // Imported
 import GlassView from '../../components/common/GlassView';
 
 const CreateDreamScreen: React.FC = () => {
@@ -293,39 +295,34 @@ const CreateDreamScreen: React.FC = () => {
 
         {/* 음성 녹음 및 STT */}
         <GlassView style={styles.section}>
-          <Text style={styles.sectionTitle}>음성 녹음 및 변환 (선택사항)</Text>
+          <Text style={styles.sectionTitle}>꿈 잡기 (음성 녹음)</Text>
           
-          {/* 음성 파형 시각화 */}
-          <VoiceWaveform
-            isRecording={isRecording || isRealtimeSTTActive}
-            duration={recordingTime}
-            amplitude={audioAmplitude}
-          />
-          
-          {/* 녹음 컨트롤 */}
-          <View style={styles.recordingContainer}>
-            {!isRecording ? (
-              <TouchableOpacity style={styles.recordButton} onPress={handleStartRecording}>
-                <Text style={styles.recordButtonText}>🎤 녹음 시작</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.stopButton} onPress={handleStopRecording}>
-                <Text style={styles.stopButtonText}>⏹️ 녹음 중지</Text>
-              </TouchableOpacity>
-            )}
+          <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            {/* Dream Catcher Controller */}
+            <DreamCatcher 
+              isRecording={isRecording || isRealtimeSTTActive}
+              onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
+              audioLevel={audioAmplitude}
+            />
             
-            {recordingTime > 0 && (
-              <Text style={styles.recordingTime}>
-                {voiceService.formatTime(recordingTime)}
-              </Text>
-            )}
-            
-            {audioPath && !isRecording && (
-              <TouchableOpacity style={styles.playButton} onPress={handlePlayRecording}>
-                <Text style={styles.playButtonText}>▶️ 재생</Text>
-              </TouchableOpacity>
-            )}
+            {/* Recording Timer / Status Text */}
+            <Text style={[styles.recordingTime, { marginTop: 20 }]}>
+              {isRecording 
+                ? `꿈을 기록하는 중... ${voiceService.formatTime(recordingTime)}` 
+                : (audioPath ? '녹음 완료! (다시 누르면 재녹음)' : '버튼을 눌러 꿈을 들려주세요')}
+            </Text>
           </View>
+
+          {/* 저장된 오디오 파형 (녹음 완료 시 표시) */}
+          {audioPath && (
+            <VoiceWaveform
+              isRecording={false}
+              duration={recordingTime}
+              amplitude={audioAmplitude}
+              filePath={audioPath} // Assuming VoiceWaveform accepts filePath for playback visualization in future
+            />
+          )}
+
 
           {/* STT 변환 */}
           {audioPath && !isRecording && (

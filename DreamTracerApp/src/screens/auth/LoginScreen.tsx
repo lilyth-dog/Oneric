@@ -23,7 +23,8 @@ import { useNavigationStore } from '../../stores/navigationStore';
 import { useAuthStore } from '../../stores/authStore';
 import socialAuthService from '../../services/socialAuthService';
 import AnimatedBackground from '../../components/AnimatedBackground';
-import BrandLogo from '../../components/common/BrandLogo'; // Imported
+import BrandLogo from '../../components/common/BrandLogo';
+import MascotAvatar from '../../components/mascot/MascotAvatar'; // Imported
 import { hapticService } from '../../services/hapticService';
 import { soundService } from '../../services/soundService'; // Imported
 import GoogleIcon from '../../components/GoogleIcon';
@@ -137,22 +138,30 @@ const LoginScreen: React.FC = () => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Enhanced Header with Animation */}
+        {/* Enhanced Header with Animation */}
         <View style={styles.header}>
-          <Animated.View 
-            style={{
-              alignItems: 'center',
-              opacity: logoOpacity,
-              transform: [{ scale: logoScale }],
-              marginBottom: 16,
-            }}
-          >
-            <BrandLogo width={100} height={100} />
-            <Text style={[styles.logo, DreamyLogoStyle, { fontSize: 40, marginTop: -10 }]}>
-              꿈결
-            </Text>
-          </Animated.View>
-          <Text style={[styles.subtitle, DreamySubtitleStyle]}>꿈을 통한 자기 성찰의 여정</Text>
-          <Text style={styles.welcomeText}>무의식의 세계로 떠나는 여행</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+             {/* Logo & Mascot Pair */}
+             <Animated.View 
+                style={{
+                  alignItems: 'center',
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                  marginRight: 10,
+                }}
+              >
+                <BrandLogo width={80} height={80} />
+              </Animated.View>
+              
+              <View style={{ marginLeft: 10 }}>
+                 <MascotAvatar size={60} mood="happy" />
+              </View>
+          </View>
+
+          <Text style={[styles.logo, DreamyLogoStyle]}>
+            꿈결
+          </Text>
+          <Text style={[styles.subtitle, DreamySubtitleStyle]}>어젯밤의 꿈을 들려주세요</Text>
         </View>
 
         {/* Social Login Mode (Default) */}
@@ -163,38 +172,36 @@ const LoginScreen: React.FC = () => {
               <View style={styles.socialButtons}>
                 <TouchableOpacity
                   style={[styles.socialButton, styles.kakaoButton]}
-                  onPress={() => handleSocialLogin('kakao')}
                   activeOpacity={0.7} 
                   onPress={() => {
                     hapticService.trigger('light');
                     soundService.play('click');
                     handleSocialLogin('kakao');
                   }}
-                  style={styles.socialIconButton}
                 >
                   <KakaoIcon size={20} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
+                  style={[styles.socialButton, styles.naverButton]}
                   activeOpacity={0.7} 
                   onPress={() => {
                     hapticService.trigger('light');
                     soundService.play('click');
                     handleSocialLogin('naver');
                   }}
-                  style={styles.socialIconButton}
                 >
                   <NaverIcon size={20} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  activeOpacity={0.7} 
-                  onPress={() => {
-                    hapticService.trigger('light');
-                    soundService.play('click');
-                    handleSocialLogin('google');
-                  }}
-                  style={styles.socialIconButton}
+                   style={[styles.socialButton, styles.googleButton]}
+                   activeOpacity={0.7} 
+                   onPress={() => {
+                     hapticService.trigger('light');
+                     soundService.play('click');
+                     handleSocialLogin('google');
+                   }}
                 >
                   <GoogleIcon size={20} />
                 </TouchableOpacity>
@@ -308,7 +315,8 @@ const styles = StyleSheet.create({
   logo: {
     ...DreamyLogoStyle,
     color: '#FFDDA8', // Starlight Gold
-    marginBottom: 16,
+    fontSize: 42,
+    marginBottom: 8,
     textShadowColor: 'rgba(255, 221, 168, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,

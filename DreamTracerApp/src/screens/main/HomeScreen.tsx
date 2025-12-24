@@ -38,6 +38,20 @@ const HomeScreen: React.FC = () => {
   const { dreams, recentDreams, getDreams, isLoading } = useDreamStore();
   const { user, logout } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Mascot State
+  const [mascotMessage, setMascotMessage] = useState('');
+  const [mascotMood, setMascotMood] = useState<'happy' | 'calm' | 'concerned'>('calm');
+
+  // Initial Greeting Effect
+  useEffect(() => {
+    const hour = new Date().getHours();
+    const isMorning = hour < 12;
+    setMascotMessage(isMorning 
+      ? "좋은 아침이에요! 어젯밤 꿈은 기억나시나요? 🌤️" 
+      : "오늘 하루도 고생하셨어요. 자기 전 꿈 기록, 잊지 마세요! 🌙");
+    setMascotMood(isMorning ? 'happy' : 'calm');
+  }, []);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -296,6 +310,23 @@ const HomeScreen: React.FC = () => {
       percentage: Math.round((data.count / total) * 100),
       color: data.color,
     }));
+
+  };
+
+  // Interaction Handlers
+  const handleDayPress = (day: any) => {
+    if (day.count > 0) {
+      setMascotMessage(`${day.day}요일엔 ${day.count}개의 꿈을 꾸셨네요.${day.lucid ? ' 자각몽도 있었어요! ✨' : ''}`);
+      setMascotMood(day.lucid ? 'happy' : 'calm');
+    } else {
+      setMascotMessage(`${day.day}요일은 기록된 꿈이 없네요. 푹 주무셨나요? 😴`);
+      setMascotMood('calm');
+    }
+  };
+
+  const handleEmotionPress = (emotion: any) => {
+    setMascotMessage(`최근 꿈에서 '${emotion.emotion}' 감정을 ${emotion.percentage}%만큼 느끼셨군요.`);
+    setMascotMood(emotion.percentage > 30 ? 'concerned' : 'calm');
   };
 
   return (
@@ -310,12 +341,8 @@ const HomeScreen: React.FC = () => {
         <View>
           <Text style={styles.greeting}>{getGreeting()}, {user?.email?.split('@')[0] || '사용자'}님</Text>
           <MascotBubble 
-            text={
-              new Date().getHours() < 12 
-                ? "좋은 아침이에요! 어젯밤 꿈은 기억나시나요? 🌤️" 
-                : "오늘 하루도 고생하셨어요. 자기 전 꿈 기록, 잊지 마세요! 🌙"
-            } 
-            mood={new Date().getHours() < 12 ? 'happy' : 'calm'}
+            text={mascotMessage} 
+            mood={mascotMood}
           />
         </View>
         <View style={styles.headerActions}>
@@ -336,12 +363,18 @@ const HomeScreen: React.FC = () => {
 
       {/* 주간 꿈 차트 */}
       <GlassView style={styles.chartSection}>
-        <WeeklyDreamChart data={getWeeklyChartData()} />
+        <WeeklyDreamChart 
+          data={getWeeklyChartData()} 
+          onDayPress={handleDayPress}
+        />
       </GlassView>
 
       {/* 감정 히트맵 */}
       <GlassView style={styles.chartSection}>
-        <EmotionHeatmap emotions={getEmotionData()} />
+        <EmotionHeatmap 
+          emotions={getEmotionData()} 
+          onEmotionPress={handleEmotionPress}
+        />
       </GlassView>
 
       {/* 최근 꿈 */}

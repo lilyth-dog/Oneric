@@ -8,6 +8,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { EmotionalSubtitleStyle, SmallFontStyle } from '../../styles/fonts';
 
@@ -19,6 +20,7 @@ interface DayData {
 
 interface WeeklyDreamChartProps {
   data?: DayData[];
+  onDayPress?: (day: DayData) => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -45,7 +47,8 @@ const getDefaultData = (): DayData[] => {
 };
 
 export const WeeklyDreamChart: React.FC<WeeklyDreamChartProps> = ({ 
-  data = getDefaultData() 
+  data = getDefaultData(),
+  onDayPress
 }) => {
   const maxCount = Math.max(...data.map(d => d.count), 1);
   
@@ -81,7 +84,12 @@ export const WeeklyDreamChart: React.FC<WeeklyDreamChartProps> = ({
               : 4;
             
             return (
-              <View key={index} style={styles.barColumn}>
+              <TouchableOpacity 
+                key={index} 
+                style={styles.barColumn}
+                activeOpacity={0.7}
+                onPress={() => onDayPress && onDayPress(dayData)}
+              >
                 <View style={styles.barWrapper}>
                   {/* 배경 바 (빈 상태) */}
                   <View style={styles.barBackground} />
@@ -121,7 +129,7 @@ export const WeeklyDreamChart: React.FC<WeeklyDreamChartProps> = ({
                   {dayData.day}
                   {index === data.length - 1 && '\n(오늘)'}
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>

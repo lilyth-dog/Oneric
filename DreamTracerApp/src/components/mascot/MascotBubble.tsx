@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, LayoutAnimation } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, LayoutAnimation, TouchableOpacity } from 'react-native';
 import GlassView from '../common/GlassView';
 import MascotAvatar from './MascotAvatar';
 import { BodyFontStyle } from '../../styles/fonts';
@@ -15,30 +15,50 @@ const MascotBubble: React.FC<MascotBubbleProps> = ({ text, mood = 'calm', onPres
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
 
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     // Reset state when text changes
     setDisplayedText('');
     setIsTyping(true);
 
     let currentIndex = 0;
-    const interval = setInterval(() => {
+    
+    // Clear any existing interval
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(() => {
       if (currentIndex < text.length) {
         setDisplayedText((prev) => prev + text[currentIndex]);
         currentIndex++;
         
-        // Haptic Feedback for typing sensation (every 3rd char to avoid buzz overkill)
+        // Haptic Feedback every 3rd char
         if (currentIndex % 3 === 0) {
            hapticService.trigger('light'); 
         }
 
       } else {
-        clearInterval(interval);
+        if (intervalRef.current) clearInterval(intervalRef.current);
         setIsTyping(false);
       }
-    }, 50); // Typing speed
+    }, 40); // Slightly faster
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [text]);
+
+  const handlePress = () => {
+    if (isTyping) {
+      // Skip typing
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setDisplayedText(text);
+      setIsTyping(false);
+      hapticService.trigger('medium');
+    } else if (onPress) {
+      onPress();
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -46,16 +66,14 @@ const MascotBubble: React.FC<MascotBubbleProps> = ({ text, mood = 'calm', onPres
         <MascotAvatar size={60} mood={mood} />
       </View>
       
-      <View style={styles.bubbleContainer}>
+      <TouchableOpacity style={styles.bubbleContainer} activeOpacity={0.9} onPress={handlePress}>
         <GlassView style={styles.bubble} intensity="light">
           <Text style={styles.text}>
             {displayedText}
             {isTyping && <Text style={styles.cursor}>|</Text>}
           </Text>
         </GlassView>
-        {/* Triangle arrow for speech bubble */}
-        {/* (Optional, simplifying for now as detached bubble looks cleaner) */}
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };

@@ -14,10 +14,11 @@ import { useNavigation } from '@react-navigation/native';
 import { useDreamStore } from '../../stores/dreamStore'; // Assuming store handles global state, but manual fetch is cleaner for specific filtering
 import dreamService from '../../services/dreamService';
 import { Dream } from '../../types/dream';
-import AnimatedBackground from '../../components/AnimatedBackground';
+import AnimatedBackground from '../../components/AnimatedBackground'; // Restored
 import GlassView from '../../components/common/GlassView';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 import EmptyStateGraphic from '../../components/common/EmptyStateGraphic';
+import MasonryList from '../../components/common/MasonryList'; // Imported
 import { hapticService } from '../../services/hapticService';
 import { soundService } from '../../services/soundService'; // Imported
 import { 
@@ -119,47 +120,50 @@ const DreamHistoryScreen: React.FC = () => {
     }
   };
 
-  const renderDreamItem = ({ item }: { item: Dream }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => (navigation as any).navigate('DreamAnalysis', { dreamId: item.id })}
-      style={styles.cardWrapper}
-    >
-      <GlassView style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.dateText}>
-            {new Date(item.created_at).toLocaleDateString('ko-KR', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric', 
-              weekday: 'short'
-            })}
+  const renderDreamItem = (item: Dream, index: number) => {
+    // Masonry Card Style
+    // Random height variation for masonry effect (simulated by content length)
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => (navigation as any).navigate('DreamAnalysis', { dreamId: item.id })}
+        style={styles.cardWrapper}
+      >
+        <GlassView style={[styles.cardContent, { minHeight: item.body_text && item.body_text.length > 50 ? 200 : 160 }]}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.dateText}>
+              {new Date(item.created_at).toLocaleDateString('ko-KR', { 
+                month: 'numeric', 
+                day: 'numeric'
+              })}
+            </Text>
+            {item.lucidity_level && item.lucidity_level >= 4 && (
+              <Text style={styles.lucidIcon}>✨</Text>
+            )}
+          </View>
+
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {item.title || '무제'}
           </Text>
-          {item.lucidity_level && item.lucidity_level >= 4 && (
-            <View style={styles.lucidBadge}>
-              <Text style={styles.lucidText}>✨ 자각몽</Text>
+
+          <Text style={styles.cardPreview} numberOfLines={4}>
+            {item.body_text}
+          </Text>
+
+          {item.emotion_tags && item.emotion_tags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>#{item.emotion_tags[0]}</Text>
+              </View>
+              {item.emotion_tags.length > 1 && (
+                <Text style={styles.moreTagsText}>+{item.emotion_tags.length - 1}</Text>
+              )}
             </View>
           )}
-        </View>
-
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {item.title || '제목 없는 꿈'}
-        </Text>
-
-        <Text style={styles.cardPreview} numberOfLines={3}>
-          {item.body_text}
-        </Text>
-
-        <View style={styles.tagsContainer}>
-          {item.emotion_tags?.slice(0, 3).map((tag, idx) => (
-            <View key={idx} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
-            </View>
-          ))}
-        </View>
-      </GlassView>
-    </TouchableOpacity>
-  );
+        </GlassView>
+      </TouchableOpacity>
+    );
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -213,17 +217,17 @@ const DreamHistoryScreen: React.FC = () => {
     <AnimatedBackground>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
-        <FlatList
+        <MasonryList
           data={dreams}
           renderItem={renderDreamItem}
           keyExtractor={item => item.id}
-          ListHeaderComponent={renderHeader}
+          numColumns={2}
+          contentPadding={12}
+          ListHeaderComponent={renderHeader()}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#FFDDA8" />
-          }
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
           onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
           ListEmptyComponent={
             !isLoading ? (
               <View style={styles.emptyState}>
@@ -242,11 +246,6 @@ const DreamHistoryScreen: React.FC = () => {
                   <Text style={styles.emptyActionText}>첫 번째 꿈 기록하기 🌙</Text>
                 </TouchableOpacity>
               </View>
-            ) : null
-          }
-          ListFooterComponent={
-            isLoading && !isRefreshing && dreams.length > 0 ? (
-              <ActivityIndicator color="#FFDDA8" style={{ marginVertical: 20 }} />
             ) : null
           }
         />
@@ -330,31 +329,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   cardWrapper: {
-    marginBottom: 16,
+    marginBottom: 0, // Handled by MasonryList padding
   },
   cardContent: {
-    padding: 20,
+    padding: 16,
+    borderRadius: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   dateText: {
     ...SmallFontStyle,
     color: '#8F8C9B',
   },
-  lucidBadge: {
-    backgroundColor: 'rgba(255, 221, 168, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  lucidText: {
-    fontSize: 10,
-    color: '#FFDDA8',
-    fontWeight: 'bold',
+  lucidIcon: {
+      fontSize: 12,
   },
   cardTitle: {
     ...DreamRecordTitleStyle,
@@ -363,10 +355,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardPreview: {
-    ...BodyFontStyle,
+    ...SmallFontStyle, // Smaller font for grid
     color: '#D0CDE1',
-    lineHeight: 22,
-    marginBottom: 16,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -380,8 +372,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#FFDDA8',
+  },
+  moreTagsText: {
+      ...SmallFontStyle,
+      color: '#8F8C9B',
+      fontSize: 10,
+      marginLeft: 4,
   },
   emptyState: {
     alignItems: 'center',

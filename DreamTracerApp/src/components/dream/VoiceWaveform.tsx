@@ -16,6 +16,7 @@ interface VoiceWaveformProps {
   isRecording: boolean;
   duration: number; // seconds
   amplitude?: number; // 0-1 range
+  filePath?: string; // Optional file path for playback visualization
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

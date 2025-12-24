@@ -8,6 +8,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { EmotionalSubtitleStyle, SmallFontStyle, BodyFontStyle } from '../../styles/fonts';
 
@@ -20,6 +21,7 @@ interface EmotionData {
 
 interface EmotionHeatmapProps {
   emotions?: EmotionData[];
+  onEmotionPress?: (emotion: EmotionData) => void;
 }
 
 const defaultEmotions: EmotionData[] = [
@@ -34,7 +36,8 @@ const defaultEmotions: EmotionData[] = [
 const { width } = Dimensions.get('window');
 
 export const EmotionHeatmap: React.FC<EmotionHeatmapProps> = ({ 
-  emotions = defaultEmotions 
+  emotions = defaultEmotions,
+  onEmotionPress
 }) => {
   // 최대 percentage로 정규화
   const maxPercentage = Math.max(...emotions.map(e => e.percentage), 1);
@@ -44,7 +47,12 @@ export const EmotionHeatmap: React.FC<EmotionHeatmapProps> = ({
       <Text style={styles.title}>🎭 감정 패턴</Text>
       <View style={styles.emotionsGrid}>
         {emotions.map((emotionData, index) => (
-          <View key={index} style={styles.emotionRow}>
+          <TouchableOpacity 
+            key={index} 
+            style={styles.emotionRow}
+            activeOpacity={0.7}
+            onPress={() => onEmotionPress && onEmotionPress(emotionData)}
+          >
             <View style={styles.emotionLabel}>
               <Text style={styles.emotionIcon}>{emotionData.icon}</Text>
               <Text style={styles.emotionName}>{emotionData.emotion}</Text>
@@ -72,7 +80,7 @@ export const EmotionHeatmap: React.FC<EmotionHeatmapProps> = ({
             <Text style={styles.percentageText}>
               {emotionData.percentage}%
             </Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
       

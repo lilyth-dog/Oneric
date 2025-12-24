@@ -18,6 +18,7 @@ import {
   AnalysisReportTitleStyle
 } from '../../styles/fonts';
 import GlassView from '../common/GlassView';
+import MascotBubble from '../mascot/MascotBubble'; // Imported
 
 interface AnalysisResultViewProps {
   analysisResult: DreamAnalysisResponse;
@@ -40,10 +41,21 @@ export const AnalysisResultView: React.FC<AnalysisResultViewProps> = ({
 }) => {
   const { analysis, visualization, insights, recommendations } = analysisResult;
 
+  // Determine Mascot Mood
+  const getMascotMood = (tone: string): 'happy' | 'calm' | 'concerned' => {
+    if (tone.includes('불안') || tone.includes('슬픔') || tone.includes('공포') || tone.includes('Fear') || tone.includes('Sad')) return 'concerned';
+    if (tone.includes('행복') || tone.includes('기쁨') || tone.includes('설렘') || tone.includes('Happy') || tone.includes('Excited')) return 'happy';
+    return 'calm';
+  };
+
+  const mascotMood = getMascotMood(analysis.emotionalTone);
+  const mascotText = `이 꿈은 '${analysis.keywords[0] || '무의식'}'에 관한 이야기네요.\n${insights[0] || analysis.summary.slice(0, 50) + '...'}`;
+
   return (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
       {/* 헤더 */}
       <View style={styles.header}>
+        <MascotBubble text={mascotText} mood={mascotMood} />
         <Text style={styles.title}>꿈 분석 결과</Text>
         <Text style={styles.subtitle}>{dreamTitle || '제목 없음'}</Text>
       </View>
