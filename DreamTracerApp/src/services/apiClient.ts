@@ -10,15 +10,19 @@ class ApiClient {
      * Request wrapper with automatic token injection and error handling
      */
     async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        const url = `${Config.API_BASE_URL}${endpoint}`;
+        const url = endpoint.startsWith('http') ? endpoint : `${Config.API_BASE_URL}${endpoint}`;
 
         try {
             const token = await authService.getToken();
 
             const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
                 ...(options.headers as Record<string, string>),
             };
+
+            // Don't set Content-Type if it's FormData (let fetch handle it)
+            if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
 
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;

@@ -22,7 +22,9 @@ import TermsOfServiceScreen from './src/screens/legal/TermsOfServiceScreen';
 import PrivacyPolicyScreen from './src/screens/legal/PrivacyPolicyScreen';
 import CommunityFeedScreen from './src/screens/community/CommunityFeedScreen';
 import ProfileScreen from './src/screens/settings/ProfileScreen';
-import AIConnectionTestScreen from './src/screens/settings/AIConnectionTestScreen';
+import CustomTabBar from './src/components/navigation/CustomTabBar'; // Imported
+import GlobalBackground from './src/components/common/GlobalBackground';
+import { View } from 'react-native';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -91,27 +93,36 @@ function App(): React.JSX.Element {
         return <CommunityFeedScreen />;
       case 'Profile':
         return <ProfileScreen />;
-      case 'Settings': // Map Settings to AI Test temporarily
-        return <AIConnectionTestScreen />;
       default:
         return <HomeScreen />;
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDarkMode ? '#191D2E' : '#EAE8F0' }}>
+    <View style={{ flex: 1 }}>
       <StatusBar
+        translucent={true}
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={isDarkMode ? '#191D2E' : '#EAE8F0'}
+        backgroundColor="transparent"
       />
+      <GlobalBackground />
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       {isSplashVisible ? (
         <SplashScreen onFinish={() => setIsSplashVisible(false)} />
       ) : (
-        <ScreenTransition key={currentScreen}>
-          {renderScreen()}
-        </ScreenTransition>
+        <>
+          <ScreenTransition key={currentScreen}>
+            {renderScreen()}
+          </ScreenTransition>
+          
+          {/* Glassbar Navigation (Visible only on Main Tabs) */}
+          {['Home', 'DreamHistory', 'CommunityFeed', 'Profile'].includes(currentScreen) && (
+            <CustomTabBar />
+          )}
+        </>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 

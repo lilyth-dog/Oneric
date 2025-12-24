@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { EmotionalSubtitleStyle, SmallFontStyle } from '../../styles/fonts';
 
-interface DayData {
+export interface DayData {
   day: string;
   count: number;
   lucid: boolean;

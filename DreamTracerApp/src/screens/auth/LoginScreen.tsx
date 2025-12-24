@@ -21,8 +21,8 @@ import {
 import GlassView from '../../components/common/GlassView';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useAuthStore } from '../../stores/authStore';
+import GlassButton from '../../components/common/GlassButton';
 import socialAuthService from '../../services/socialAuthService';
-import AnimatedBackground from '../../components/AnimatedBackground';
 import BrandLogo from '../../components/common/BrandLogo';
 import MascotAvatar from '../../components/mascot/MascotAvatar'; // Imported
 import { hapticService } from '../../services/hapticService';
@@ -101,7 +101,23 @@ const LoginScreen: React.FC = () => {
   // Logo shimmer animation
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   
+  // Mascot floating animation
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  
+  // Glow pulse animation
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  
+  // Typing animation state
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTypingComplete, setIsTypingComplete] = useState(false);
+  const fullText = '반가워요! 저는 루나예요 ✨\n당신의 꿈 여행을 함께할게요';
+  
+  // Mascot touch state
+  const [mascotScale] = useState(new Animated.Value(1));
+  const [mascotMood, setMascotMood] = useState<'happy' | 'calm' | 'concerned'>('happy');
+  
   useEffect(() => {
+    // Logo shimmer
     const shimmer = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmerAnim, {
@@ -117,8 +133,96 @@ const LoginScreen: React.FC = () => {
       ])
     );
     shimmer.start();
-    return () => shimmer.stop();
-  }, [shimmerAnim]);
+    
+    // Mascot floating animation
+    const float = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    float.start();
+    
+    // Glow pulse animation
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 1200,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    glow.start();
+    
+    return () => {
+      shimmer.stop();
+      float.stop();
+      glow.stop();
+    };
+  }, [shimmerAnim, floatAnim, glowAnim]);
+  
+  // Typing effect
+  useEffect(() => {
+    let currentIndex = 0;
+    setDisplayedText('');
+    setIsTypingComplete(false);
+    
+    const typingInterval = setInterval(() => {
+      if (currentIndex < fullText.length) {
+        setDisplayedText(fullText.slice(0, currentIndex + 1));
+        currentIndex++;
+        
+        // Haptic feedback every 5th character
+        if (currentIndex % 5 === 0) {
+          hapticService.trigger('light');
+        }
+      } else {
+        clearInterval(typingInterval);
+        setIsTypingComplete(true);
+      }
+    }, 50);
+    
+    return () => clearInterval(typingInterval);
+  }, []);
+  
+  // Mascot touch handler
+  const handleMascotPress = () => {
+    hapticService.trigger('medium');
+    soundService.play('click');
+    
+    // Bounce animation
+    Animated.sequence([
+      Animated.timing(mascotScale, {
+        toValue: 1.15,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(mascotScale, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Cycle through moods
+    const moods: Array<'happy' | 'calm' | 'concerned'> = ['happy', 'calm', 'concerned'];
+    const currentIndex = moods.indexOf(mascotMood);
+    setMascotMood(moods[(currentIndex + 1) % moods.length]);
+  };
 
   const logoOpacity = shimmerAnim.interpolate({
     inputRange: [0, 0.5, 1],
@@ -129,39 +233,87 @@ const LoginScreen: React.FC = () => {
     inputRange: [0, 0.5, 1],
     outputRange: [1, 1.02, 1],
   });
+  
+  const floatTranslate = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
+  
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
 
   return (
-    <AnimatedBackground>
-      <KeyboardAvoidingView
+    <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Enhanced Header with Animation */}
-        {/* Enhanced Header with Animation */}
+        {/* Enhanced Header with Mascot Welcome */}
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-             {/* Logo & Mascot Pair */}
-             <Animated.View 
+          {/* Luna Mascot Section - Top with Premium Animations */}
+          <View style={styles.mascotSection}>
+            {/* Glow Effect Background */}
+            <Animated.View 
+              style={[
+                styles.mascotGlow,
+                { opacity: glowOpacity }
+              ]}
+            />
+            
+            {/* Floating Mascot with Touch */}
+            <TouchableOpacity 
+              activeOpacity={0.9} 
+              onPress={handleMascotPress}
+              style={styles.mascotTouchable}
+            >
+              <Animated.View 
+                style={{
+                  transform: [
+                    { translateY: floatTranslate },
+                    { scale: mascotScale }
+                  ],
+                }}
+              >
+                <MascotAvatar size={110} mood={mascotMood} />
+              </Animated.View>
+            </TouchableOpacity>
+            
+            {/* Animated Speech Bubble with Typing Effect */}
+            <Animated.View style={[
+              styles.speechBubble,
+              { opacity: shimmerAnim.interpolate({
+                inputRange: [0, 0.3, 1],
+                outputRange: [0.9, 1, 0.9],
+              })}
+            ]}>
+              <View style={styles.speechBubbleArrow} />
+              <Text style={styles.speechBubbleText}>
+                {displayedText}
+                {!isTypingComplete && <Text style={styles.typingCursor}>|</Text>}
+              </Text>
+            </Animated.View>
+          </View>
+          
+          {/* Logo Section - Below Mascot */}
+          <View style={styles.logoSection}>
+            <View style={styles.logoRow}>
+              <Animated.View 
                 style={{
                   alignItems: 'center',
                   opacity: logoOpacity,
                   transform: [{ scale: logoScale }],
-                  marginRight: 10,
                 }}
               >
-                <BrandLogo width={80} height={80} />
+                <BrandLogo width={60} height={60} />
               </Animated.View>
-              
-              <View style={{ marginLeft: 10 }}>
-                 <MascotAvatar size={60} mood="happy" />
-              </View>
+              <Text style={[styles.logo, DreamyLogoStyle]}>
+                꿈결
+              </Text>
+            </View>
+            <Text style={[styles.subtitle, DreamySubtitleStyle]}>어젯밤의 꿈을 들려주세요</Text>
           </View>
-
-          <Text style={[styles.logo, DreamyLogoStyle]}>
-            꿈결
-          </Text>
-          <Text style={[styles.subtitle, DreamySubtitleStyle]}>어젯밤의 꿈을 들려주세요</Text>
         </View>
 
         {/* Social Login Mode (Default) */}
@@ -254,27 +406,19 @@ const LoginScreen: React.FC = () => {
 
           {/* Login Actions */}
           <View style={styles.loginActions}>
-            <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
+            <GlassButton
+              title="로그인"
               onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#191D2E" size="small" />
-                  <Text style={styles.loginButtonText}> 로그인 중...</Text>
-                </View>
-              ) : (
-                <Text style={styles.loginButtonText}>로그인</Text>
-              )}
-            </TouchableOpacity>
+              loading={isLoading}
+              style={styles.loginButtonOverride}
+            />
             
-            <TouchableOpacity
-              style={styles.registerButton}
-              onPress={() => (navigate as any).navigate('Register')} // Changed to use navigate from useNavigationStore
-            >
-              <Text style={styles.registerButtonText}>회원가입</Text>
-            </TouchableOpacity>
+            <GlassButton
+              title="회원가입"
+              type="secondary"
+              onPress={() => (navigate as any).navigate('Register')}
+              style={styles.registerButtonOverride}
+            />
           </View>
           </GlassView>
         )}
@@ -295,7 +439,6 @@ const LoginScreen: React.FC = () => {
         )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </AnimatedBackground>
   );
 };
 
@@ -310,13 +453,87 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24, // Reduced from 48
+    marginBottom: 16,
+  },
+  mascotSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  mascotGlow: {
+    position: 'absolute',
+    left: 10,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#A78BFA',
+    shadowColor: '#A78BFA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  mascotTouchable: {
+    zIndex: 2,
+  },
+  typingCursor: {
+    color: '#A78BFA',
+    fontWeight: 'bold',
+  },
+  loginButtonOverride: {
+    marginBottom: 12,
+  },
+  registerButtonOverride: {
+    marginTop: 0,
+  },
+  speechBubble: {
+    backgroundColor: 'rgba(74, 64, 99, 0.9)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginLeft: 12,
+    maxWidth: 200,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 221, 168, 0.2)',
+    position: 'relative',
+  },
+  speechBubbleArrow: {
+    position: 'absolute',
+    left: -8,
+    top: 20,
+    width: 0,
+    height: 0,
+    borderTopWidth: 8,
+    borderBottomWidth: 8,
+    borderRightWidth: 10,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderRightColor: 'rgba(74, 64, 99, 0.9)',
+  },
+  speechBubbleText: {
+    ...SmallFontStyle,
+    color: '#EAE8F0',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'left',
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
   },
   logo: {
     ...DreamyLogoStyle,
     color: '#FFDDA8', // Starlight Gold
-    fontSize: 42,
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 0,
     textShadowColor: 'rgba(255, 221, 168, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,

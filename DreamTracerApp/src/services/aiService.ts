@@ -3,7 +3,7 @@
  * OSS AI 모델 (Llama/Mistral) 통합 및 꿈 분석
  */
 import { Platform } from 'react-native';
-import { API_CONFIG } from '../config/api';
+import apiClient from './apiClient';
 
 // AI 모델 타입
 export enum AIModel {
@@ -81,9 +81,6 @@ class AIService {
     language: 'ko'
   };
 
-  // private baseUrl = 'https://api.ggumgyeol.com/ai'; // 실제 AI API URL
-  private baseUrl = API_CONFIG.baseURL; // 공통 설정 사용
-
   constructor() {
     console.log('AIService: 초기화 완료');
     this.checkConnection();
@@ -96,20 +93,23 @@ class AIService {
     try {
       console.log('AIService: 연결 상태 확인 중...');
 
-      // 실제 구현에서는 AI 서버에 ping 요청
       // AbortController를 사용한 타임아웃 구현
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(`${this.baseUrl}/health`, {
-        method: 'GET',
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      try {
+        await apiClient.request('/health', {
+          method: 'GET',
+          signal: controller.signal
+        });
+        this.state.isConnected = true;
+      } catch (error) {
+        this.state.isConnected = false;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
-      this.state.isConnected = response.ok;
       console.log('AIService: 연결 상태 -', this.state.isConnected ? '연결됨' : '연결 실패');
-
       return this.state.isConnected;
     } catch (error) {
       this.state.isConnected = false;
@@ -128,14 +128,6 @@ class AIService {
 
       console.log('AIService: 꿈 분석 시작 -', this.settings.model);
 
-      // 연결 상태 확인
-      if (!this.state.isConnected) {
-        await this.checkConnection();
-        if (!this.state.isConnected) {
-          throw new Error('AI 서버에 연결할 수 없습니다. 네트워크를 확인해주세요.');
-        }
-      }
-
       // 분석 요청 데이터 구성
       const analysisRequest = {
         dream_text: dreamText,
@@ -147,21 +139,11 @@ class AIService {
         additional_context: additionalContext
       };
 
-      // AI 서버에 분석 요청
-      const response = await fetch(`${this.baseUrl}/analyze`, {
+      // AI 서버에 분석 요청 via centralized apiClient
+      const result = await apiClient.request<DreamAnalysisResult>('/ai/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await this.getAuthToken()}`
-        },
         body: JSON.stringify(analysisRequest)
       });
-
-      if (!response.ok) {
-        throw new Error(`AI 분석 실패: ${response.status}`);
-      }
-
-      const result: DreamAnalysisResult = await response.json();
 
       this.state.isProcessing = false;
       this.state.lastAnalysisTime = Date.now();
@@ -176,7 +158,7 @@ class AIService {
       console.error('AIService: 꿈 분석 실패:', error);
 
       // 오프라인 모드에서 시뮬레이션된 결과 반환
-      if (error instanceof Error && error.message.includes('연결')) {
+      if (error instanceof Error && (error.message.includes('network') || error.message.includes('connect'))) {
         return this.getSimulatedAnalysis(dreamText);
       }
 
@@ -208,20 +190,10 @@ class AIService {
       };
 
       // AI 서버에 시각화 요청
-      const response = await fetch(`${this.baseUrl}/visualize`, {
+      const result = await apiClient.request<DreamVisualizationResult>('/ai/visualize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await this.getAuthToken()}`
-        },
         body: JSON.stringify(visualizationRequest)
       });
-
-      if (!response.ok) {
-        throw new Error(`시각화 생성 실패: ${response.status}`);
-      }
-
-      const result: DreamVisualizationResult = await response.json();
 
       this.state.isProcessing = false;
 
@@ -234,7 +206,7 @@ class AIService {
       console.error('AIService: 시각화 생성 실패:', error);
 
       // 오프라인 모드에서 시뮬레이션된 결과 반환
-      if (error instanceof Error && error.message.includes('연결')) {
+      if (error instanceof Error && (error.message.includes('network') || error.message.includes('connect'))) {
         return this.getSimulatedVisualization(dreamText);
       }
 
@@ -260,7 +232,6 @@ class AIService {
         return true;
       } else {
         console.warn('AIService: 새 모델 연결 실패, 이전 모델로 복원');
-        this.settings.model = this.state.currentModel;
         return false;
       }
     } catch (error) {
@@ -324,13 +295,13 @@ class AIService {
         model: AIModel.LOCAL_LLAMA,
         name: '로컬 Llama',
         description: '오프라인 분석, 프라이버시 보호',
-        isAvailable: false // 로컬 모델은 별도 설정 필요
+        isAvailable: false
       },
       {
         model: AIModel.LOCAL_MISTRAL,
         name: '로컬 Mistral',
         description: '오프라인 분석, 프라이버시 보호',
-        isAvailable: false // 로컬 모델은 별도 설정 필요
+        isAvailable: false
       }
     ];
   }
@@ -381,14 +352,6 @@ class AIService {
       elements: ['하늘', '구름', '빛'],
       timestamp: new Date().toISOString()
     };
-  }
-
-  /**
-   * 인증 토큰 조회 (실제 구현에서는 authStore에서 가져와야 함)
-   */
-  private async getAuthToken(): Promise<string> {
-    // 실제 구현에서는 authStore에서 토큰을 가져와야 함
-    return 'dummy_token';
   }
 
   /**

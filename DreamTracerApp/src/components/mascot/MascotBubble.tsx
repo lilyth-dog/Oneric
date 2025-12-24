@@ -9,9 +9,11 @@ interface MascotBubbleProps {
   text: string;
   mood?: 'happy' | 'calm' | 'concerned';
   onPress?: () => void;
+  hideAvatar?: boolean;
+  isSmall?: boolean;
 }
 
-const MascotBubble: React.FC<MascotBubbleProps> = ({ text, mood = 'calm', onPress }) => {
+const MascotBubble: React.FC<MascotBubbleProps> = ({ text, mood = 'calm', onPress, hideAvatar = false }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
 
@@ -62,9 +64,11 @@ const MascotBubble: React.FC<MascotBubbleProps> = ({ text, mood = 'calm', onPres
 
   return (
     <View style={styles.container}>
-      <View style={styles.avatarContainer}>
-        <MascotAvatar size={60} mood={mood} />
-      </View>
+      {!hideAvatar && (
+        <View style={styles.avatarContainer}>
+          <MascotAvatar size={60} mood={mood} />
+        </View>
+      )}
       
       <TouchableOpacity style={styles.bubbleContainer} activeOpacity={0.9} onPress={handlePress}>
         <GlassView style={styles.bubble} intensity="light">

@@ -2,6 +2,8 @@
  * 꿈 분석 서비스
  * AI 기반 꿈 분석 및 인사이트 제공
  */
+import apiClient from './apiClient';
+import dreamService from './dreamService';
 import aiService, { DreamAnalysisResult, DreamVisualizationResult, AIModel } from './aiService';
 import hybridDataManager from './hybridDataManager';
 
@@ -78,11 +80,27 @@ class DreamAnalysisService {
         return cached;
       }
 
-      // AI 서비스 상태 확인
-      const aiState = aiService.getState();
-      if (!aiState.isConnected) {
-        throw new Error('AI 서비스에 연결할 수 없습니다. 네트워크를 확인해주세요.');
-      }
+      // 백엔드 API를 통해 분석 실행
+      const backendAnalysis = await dreamService.analyzeDream(request.dreamId);
+
+      // 백엔드 응답을 프론트엔드 구조로 변환 (Adapter Pattern)
+      const mappedAnalysis: DreamAnalysisResult = {
+        summary: backendAnalysis.summary_text || '분석 결과가 없습니다.',
+        keywords: backendAnalysis.keywords || [],
+        emotionalTone: backendAnalysis.emotional_flow_text || '분석 중...',
+        symbols: (backendAnalysis.symbol_analysis?.symbols || []).map((s: any) => ({
+          symbol: s.symbol,
+          meaning: s.interpretation,
+          confidence: 0.9
+        })),
+        themes: [],
+        insights: [],
+        reflectiveQuestions: backendAnalysis.reflective_question ? [backendAnalysis.reflective_question] : [],
+        dreamType: request.additionalContext?.dreamType || '일반',
+        lucidityScore: request.lucidityLevel || 0,
+        emotionalIntensity: 0.5,
+        timestamp: backendAnalysis.created_at || new Date().toISOString()
+      };
 
       // 분석 컨텍스트 구성
       const analysisContext = {
@@ -94,26 +112,25 @@ class DreamAnalysisService {
         ...request.additionalContext
       };
 
-      // AI 분석 실행
-      const analysis = await aiService.analyzeDream(request.dreamText, analysisContext);
-
-      // 시각화 생성 (선택사항)
+      // 시각화 생성 (선택사항 - 현재는 Mock 또는 별도 서비스 유지)
       let visualization: DreamVisualizationResult | undefined;
       try {
-        visualization = await aiService.generateVisualization(request.dreamText, analysis);
+        // Visualization is NOT yet in backend analyze response. Keep aiService for visual or mock it.
+        // For strict backend integration, we might skip or leave simulated for now.
+        visualization = await aiService.generateVisualization(request.dreamText, mappedAnalysis);
       } catch (error) {
         console.warn('DreamAnalysisService: 시각화 생성 실패:', error);
       }
 
-      // 인사이트 생성
-      const insights = this.generateInsights(analysis, analysisContext);
+      // 로컬 인사이트 생성 로직으로 보강
+      const insights = this.generateInsights(mappedAnalysis, analysisContext);
+      const recommendations = this.generateRecommendations(mappedAnalysis, analysisContext);
 
-      // 추천사항 생성
-      const recommendations = this.generateRecommendations(analysis, analysisContext);
+      mappedAnalysis.insights = insights; // Update mapped with generated
 
       // 응답 구성
       const response: DreamAnalysisResponse = {
-        analysis,
+        analysis: mappedAnalysis,
         visualization,
         insights,
         recommendations,
@@ -123,14 +140,9 @@ class DreamAnalysisService {
       // 캐시 저장
       this.analysisCache.set(request.dreamId, response);
 
-      // 서버에 분석 결과 저장
-      try {
-        await hybridDataManager.saveAnalysisResult(request.dreamId, analysis);
-      } catch (error) {
-        console.warn('DreamAnalysisService: 서버 저장 실패:', error);
-      }
+      // 서버에는 이미 저장되어 있음 (analyze_dream 호출 시점)
 
-      console.log('DreamAnalysisService: 꿈 분석 완료');
+      console.log('DreamAnalysisService: 꿈 분석 완료 (Backend Integrated)');
       return response;
     } catch (error) {
       console.error('DreamAnalysisService: 꿈 분석 실패:', error);
@@ -154,7 +166,7 @@ class DreamAnalysisService {
 
       // 모든 꿈 데이터 조회
       const dreams = await hybridDataManager.getDreams();
-      
+
       if (dreams.length === 0) {
         throw new Error('분석할 꿈 데이터가 없습니다.');
       }
@@ -229,7 +241,7 @@ class DreamAnalysisService {
 
       // 패턴 분석 기반으로 예측
       const patterns = await this.analyzeDreamPatterns();
-      
+
       // 예측 로직 실행
       const prediction = this.calculatePredictions(patterns);
 
@@ -405,7 +417,7 @@ class DreamAnalysisService {
     // 공통 감정 태그 찾기
     const allEmotions = dreams.flatMap(dream => dream.emotionTags || []);
     const emotionCounts = new Map<string, number>();
-    
+
     allEmotions.forEach(emotion => {
       emotionCounts.set(emotion, (emotionCounts.get(emotion) || 0) + 1);
     });

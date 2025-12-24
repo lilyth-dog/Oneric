@@ -1,34 +1,100 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   Image,
+  Animated,
+  Easing,
+  Dimensions,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { DreamAnalysisResponse } from '../../services/dreamAnalysisService';
 import { AIModel } from '../../services/aiService';
 import { 
   EmotionalTitleStyle, 
   EmotionalSubtitleStyle, 
-  ButtonFontStyle, 
   BodyFontStyle, 
   SmallFontStyle,
-  AnalysisReportTitleStyle
 } from '../../styles/fonts';
 import GlassView from '../common/GlassView';
-import MascotBubble from '../mascot/MascotBubble'; // Imported
+import MascotBubble from '../mascot/MascotBubble';
+import MascotAvatar from '../mascot/MascotAvatar';
+import { hapticService } from '../../services/hapticService';
+import { ModelSelector } from './result/ModelSelector';
+import { ResultSection } from './result/ResultSection';
+import { getEmotionIcon, getMascotMood } from '../../utils/dreamAnalysisUtils';
+import Colors from '../../styles/colors';
+
+const { width } = Dimensions.get('window');
+
+export interface AIModelInfo {
+  model: AIModel;
+  name: string;
+  description: string;
+  isAvailable: boolean;
+}
 
 interface AnalysisResultViewProps {
   analysisResult: DreamAnalysisResponse;
-  dreamTitle?: string; // dreamTitle is used in the header
+  dreamTitle?: string;
   selectedModel: AIModel;
-  availableModels: any[];
+  availableModels: AIModelInfo[];
   onModelChange: (model: AIModel) => void;
   onShare: () => void;
   onSave: () => void;
 }
+
+const ParticleEffect: React.FC = () => {
+  const particles = React.useMemo(() => Array.from({ length: 15 }).map(() => ({
+    x: Math.random() * 200 - 100,
+    y: Math.random() * 200 - 100,
+    anim: new Animated.Value(0),
+    size: Math.random() * 4 + 2,
+    color: Math.random() > 0.5 ? Colors.primary : Colors.secondary,
+  })), []);
+
+  useEffect(() => {
+    const animations = particles.map(p => 
+      Animated.timing(p.anim, {
+        toValue: 1,
+        duration: 1000 + Math.random() * 500,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      })
+    );
+    Animated.stagger(20, animations).start();
+  }, [particles]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {particles.map((p, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: p.size,
+            height: p.size,
+            borderRadius: p.size / 2,
+            backgroundColor: p.color,
+            opacity: p.anim.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, 1, 0],
+            }),
+            transform: [
+              { translateX: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, p.x] }) },
+              { translateY: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, p.y] }) },
+              { scale: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.5] }) },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+};
 
 export const AnalysisResultView: React.FC<AnalysisResultViewProps> = ({
   analysisResult,
@@ -40,437 +106,247 @@ export const AnalysisResultView: React.FC<AnalysisResultViewProps> = ({
   onSave,
 }) => {
   const { analysis, visualization, insights, recommendations } = analysisResult;
-
-  // Determine Mascot Mood
-  const getMascotMood = (tone: string): 'happy' | 'calm' | 'concerned' => {
-    if (tone.includes('불안') || tone.includes('슬픔') || tone.includes('공포') || tone.includes('Fear') || tone.includes('Sad')) return 'concerned';
-    if (tone.includes('행복') || tone.includes('기쁨') || tone.includes('설렘') || tone.includes('Happy') || tone.includes('Excited')) return 'happy';
-    return 'calm';
-  };
-
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const headerScale = useRef(new Animated.Value(0.95)).current;
+  
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(headerScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+    ]).start();
+    hapticService.trigger('success');
+  }, [fadeAnim, slideAnim, headerScale]);
+  
   const mascotMood = getMascotMood(analysis.emotionalTone);
   const mascotText = `이 꿈은 '${analysis.keywords[0] || '무의식'}'에 관한 이야기네요.\n${insights[0] || analysis.summary.slice(0, 50) + '...'}`;
 
   return (
-    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <MascotBubble text={mascotText} mood={mascotMood} />
-        <Text style={styles.title}>꿈 분석 결과</Text>
-        <Text style={styles.subtitle}>{dreamTitle || '제목 없음'}</Text>
-      </View>
-
-      {/* AI 모델 선택 */}
-      <View style={styles.modelSection}>
-        <Text style={styles.sectionTitle}>AI 모델</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modelScrollView}>
-          {availableModels.map((model) => (
-            <TouchableOpacity
-              key={model.model}
-              style={[
-                styles.modelButton,
-                selectedModel === model.model && styles.modelButtonActive
-              ]}
-              onPress={() => onModelChange(model.model)}
-              disabled={!model.isAvailable}
-            >
-              <Text style={[
-                styles.modelButtonText,
-                selectedModel === model.model && styles.modelButtonTextActive,
-                !model.isAvailable && styles.modelButtonDisabled
-              ]}>
-                {model.name}
-              </Text>
-              <Text style={styles.modelDescription}>{model.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* 시각화 */}
-      {visualization && (
-        <View style={styles.visualizationSection}>
-          <Text style={styles.sectionTitle}>꿈 시각화</Text>
-          <GlassView style={styles.visualizationContainer}>
-            <Image source={{ uri: visualization.imageUrl }} style={styles.visualizationImage} />
-            <Text style={styles.visualizationDescription}>{visualization.description}</Text>
-          </GlassView>
+    <Animated.ScrollView 
+      style={[styles.content, { opacity: fadeAnim }]} 
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <Animated.View style={[styles.header, { transform: [{ scale: headerScale }, { translateY: slideAnim }] }]}>
+        <View style={styles.headerMascotRow}>
+          <TouchableOpacity activeOpacity={0.9} onPress={() => hapticService.trigger('light')}>
+            <MascotAvatar size={80} mood={mascotMood} />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>꿈 분석 결과</Text>
+            <Text style={styles.subtitle}>{dreamTitle || '제목 없음'}</Text>
+            <View style={styles.emotionBadge}>
+              <Text style={styles.emotionBadgeIcon}>{getEmotionIcon(analysis.emotionalTone)}</Text>
+              <Text style={styles.emotionBadgeText}>{analysis.emotionalTone}</Text>
+            </View>
+          </View>
         </View>
+        <View style={styles.mascotBubbleContainer}>
+          <MascotBubble text={mascotText} mood={mascotMood} hideAvatar={true} />
+        </View>
+      </Animated.View>
+
+      <ModelSelector 
+        selectedModel={selectedModel} 
+        availableModels={availableModels} 
+        onModelChange={onModelChange} 
+      />
+
+      {visualization && (
+        <ResultSection title="꿈 시각화" icon="🖼️">
+          <Image source={{ uri: visualization.imageUrl }} style={styles.visualizationImage} />
+          <Text style={styles.visualizationDescription}>{visualization.description}</Text>
+        </ResultSection>
       )}
 
-      {/* 요약 */}
-      <View style={styles.summarySection}>
-        <Text style={styles.sectionTitle}>꿈 요약</Text>
-        <GlassView style={styles.summaryContainer}>
-          <Text style={styles.summaryText}>{analysis.summary}</Text>
-        </GlassView>
-      </View>
+      <ResultSection title="꿈 요약" icon="📝">
+        <ParticleEffect />
+        <Text style={styles.bodyText}>{analysis.summary}</Text>
+      </ResultSection>
 
-      {/* 키워드 */}
-      <View style={styles.keywordsSection}>
-        <Text style={styles.sectionTitle}>주요 키워드</Text>
-        <GlassView style={styles.keywordsContainer}>
-          {analysis.keywords.map((keyword, index) => (
-            <View key={index} style={styles.keywordTag}>
-              <Text style={styles.keywordText}>{keyword}</Text>
-            </View>
-          ))}
-        </GlassView>
-      </View>
-
-      {/* 감정 톤 */}
-      <View style={styles.emotionSection}>
-        <Text style={styles.sectionTitle}>감정 톤</Text>
-        <GlassView style={styles.emotionContainer}>
-          <Text style={styles.emotionText}>{analysis.emotionalTone}</Text>
-        </GlassView>
-      </View>
-
-      {/* 상징 분석 */}
-      <View style={styles.symbolsSection}>
-        <Text style={styles.sectionTitle}>상징 분석</Text>
-        {analysis.symbols.map((symbol, index) => (
-          <GlassView key={index} style={styles.symbolItem}>
-            <View style={styles.symbolHeader}>
-              <Text style={styles.symbolName}>{symbol.symbol}</Text>
-              <Text style={styles.symbolConfidence}>
-                {(symbol.confidence * 100).toFixed(0)}%
-              </Text>
-            </View>
-            <Text style={styles.symbolMeaning}>{symbol.meaning}</Text>
-          </GlassView>
-        ))}
-      </View>
-
-      {/* 테마 */}
-      <View style={styles.themesSection}>
-        <Text style={styles.sectionTitle}>주요 테마</Text>
-        <View style={styles.themesContainer}>
-          {analysis.themes.map((theme, index) => (
-            <View key={index} style={styles.themeTag}>
-              <Text style={styles.themeText}>{theme}</Text>
-            </View>
+      <ResultSection title="주요 키워드" icon="🔑">
+        <View style={styles.tagGrid}>
+          {analysis.keywords.map((keyword: string, i: number) => (
+            <View key={i} style={styles.tag}><Text style={styles.tagText}>{keyword}</Text></View>
           ))}
         </View>
-      </View>
+      </ResultSection>
 
-      {/* 인사이트 */}
-      <View style={styles.insightsSection}>
-        <Text style={styles.sectionTitle}>AI 인사이트</Text>
-        {insights.map((insight, index) => (
-          <GlassView key={index} style={styles.insightItem}>
-            <Text style={styles.insightText}>• {insight}</Text>
-          </GlassView>
-        ))}
-      </View>
-
-      {/* 반성 질문 */}
-      <View style={styles.questionsSection}>
-        <Text style={styles.sectionTitle}>반성 질문</Text>
-        {analysis.reflectiveQuestions.map((question, index) => (
-          <GlassView key={index} style={styles.questionItem}>
-            <Text style={styles.questionText}>{question}</Text>
-          </GlassView>
-        ))}
-      </View>
-
-      {/* 추천사항 */}
-      <View style={styles.recommendationsSection}>
-        <Text style={styles.sectionTitle}>추천사항</Text>
-        {recommendations.map((recommendation, index) => (
-          <GlassView key={index} style={styles.recommendationItem}>
-            <Text style={styles.recommendationText}>• {recommendation}</Text>
-          </GlassView>
-        ))}
-      </View>
-
-      {/* 통계 */}
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>꿈 통계</Text>
-        <GlassView style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>명료도</Text>
-            <Text style={styles.statValue}>{(analysis.lucidityScore * 100).toFixed(0)}%</Text>
+      <ResultSection title="상징 분석" icon="🔮">
+        {analysis.symbols.map((symbol: { symbol: string; confidence: number; meaning: string }, i: number) => (
+          <View key={i} style={styles.symbolItem}>
+            <Text style={styles.symbolName}>{symbol.symbol} ({(symbol.confidence * 100).toFixed(0)}%)</Text>
+            <Text style={styles.symbolMeaning}>{symbol.meaning}</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>감정 강도</Text>
-            <Text style={styles.statValue}>{(analysis.emotionalIntensity * 100).toFixed(0)}%</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>꿈 타입</Text>
-            <Text style={styles.statValue}>{analysis.dreamType}</Text>
-          </View>
-        </GlassView>
-      </View>
+        ))}
+      </ResultSection>
 
-      {/* 액션 버튼 */}
+      <ResultSection title="AI 인사이트" icon="💡">
+        {insights.map((insight: string, i: number) => (
+          <Text key={i} style={styles.listItem}>• {insight}</Text>
+        ))}
+      </ResultSection>
+
+      <ResultSection title="반성 질문" icon="❓">
+        {analysis.reflectiveQuestions.map((q: string, i: number) => (
+          <Text key={i} style={styles.listItem}>• {q}</Text>
+        ))}
+      </ResultSection>
+
+      {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.shareButton} onPress={onShare}>
-          <Text style={styles.shareButtonText}>📤 공유하기</Text>
+          <Icon name="share-social-outline" size={20} color={Colors.primary} style={{marginRight: 8}} />
+          <Text style={styles.shareButtonText}>공유하기</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-          <Text style={styles.saveButtonText}>💾 저장하기</Text>
+          <Icon name="save-outline" size={20} color={Colors.textInverse} style={{marginRight: 8}} />
+          <Text style={styles.saveButtonText}>저장하기</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 하단 여백 */}
       <View style={styles.bottomSpacer} />
-    </ScrollView>
+    </Animated.ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    padding: 24,
   },
   header: {
+    padding: 20,
+    marginTop: 20,
+  },
+  headerMascotRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
-    paddingTop: 20,
+    marginBottom: 16,
+  },
+  headerTextContainer: {
+    marginLeft: 16,
+    flex: 1,
   },
   title: {
-    ...AnalysisReportTitleStyle,
-    color: '#FFDDA8',
-    textAlign: 'center',
-    marginBottom: 8,
+    ...EmotionalTitleStyle,
+    fontSize: 24,
+    color: Colors.primary,
   },
   subtitle: {
     ...EmotionalSubtitleStyle,
-    color: '#8F8C9B',
-    textAlign: 'center',
+    color: Colors.textSecondary,
+    fontSize: 16,
   },
-  modelSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    ...EmotionalSubtitleStyle,
-    color: '#FFDDA8',
-    marginBottom: 16,
-  },
-  modelScrollView: {
+  emotionBadge: {
     flexDirection: 'row',
-  },
-  modelButton: {
-    backgroundColor: '#2d2d44',
+    alignItems: 'center',
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#3d3d5c',
-    minWidth: 120,
+    marginTop: 8,
   },
-  modelButtonActive: {
-    backgroundColor: '#4A4063',
-    borderColor: '#FFDDA8',
-  },
-  modelButtonText: {
-    ...ButtonFontStyle,
-    color: '#EAE8F0',
+  emotionBadgeIcon: {
     fontSize: 14,
-    marginBottom: 4,
+    marginRight: 4,
   },
-  modelButtonTextActive: {
-    color: '#FFDDA8',
-  },
-  modelButtonDisabled: {
-    color: '#595566',
-  },
-  modelDescription: {
+  emotionBadgeText: {
     ...SmallFontStyle,
-    color: '#8F8C9B',
-    fontSize: 10,
+    color: Colors.secondary,
+    fontSize: 12,
   },
-  visualizationSection: {
-    marginBottom: 24,
-  },
-  visualizationContainer: {
-    padding: 16,
+  mascotBubbleContainer: {
+    marginTop: 8,
   },
   visualizationImage: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
+    backgroundColor: Colors.surface,
   },
   visualizationDescription: {
     ...BodyFontStyle,
-    color: '#EAE8F0',
-    textAlign: 'center',
+    color: Colors.textSecondary,
+    fontSize: 13,
   },
-  summarySection: {
-    marginBottom: 24,
-  },
-  summaryContainer: {
-    padding: 20,
-  },
-  summaryText: {
+  bodyText: {
     ...BodyFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     lineHeight: 24,
   },
-  keywordsSection: {
-    marginBottom: 24,
-  },
-  keywordsContainer: {
+  tagGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    padding: 16,
   },
-  keywordTag: {
-    backgroundColor: '#4A4063',
-    borderRadius: 16,
+  tag: {
+    backgroundColor: 'rgba(255, 221, 168, 0.15)',
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+    marginBottom: 8,
   },
-  keywordText: {
+  tagText: {
     ...SmallFontStyle,
-    color: '#FFDDA8',
-  },
-  emotionSection: {
-    marginBottom: 24,
-  },
-  emotionContainer: {
-    padding: 16,
-  },
-  emotionText: {
-    ...BodyFontStyle,
-    color: '#EAE8F0',
-    textAlign: 'center',
-  },
-  symbolsSection: {
-    marginBottom: 24,
+    color: Colors.primary,
   },
   symbolItem: {
-    padding: 16,
     marginBottom: 12,
-  },
-  symbolHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
   },
   symbolName: {
     ...BodyFontStyle,
-    color: '#FFDDA8',
-    fontWeight: '600',
-  },
-  symbolConfidence: {
-    ...SmallFontStyle,
-    color: '#8F8C9B',
-  },
-  symbolMeaning: {
-    ...BodyFontStyle,
-    color: '#EAE8F0',
-    lineHeight: 20,
-  },
-  themesSection: {
-    marginBottom: 24,
-  },
-  themesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  themeTag: {
-    backgroundColor: '#e94560',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  themeText: {
-    ...SmallFontStyle,
-    color: '#ffffff',
-  },
-  insightsSection: {
-    marginBottom: 24,
-  },
-  insightItem: {
-    padding: 16,
-    marginBottom: 12,
-  },
-  insightText: {
-    ...BodyFontStyle,
-    color: '#EAE8F0',
-    lineHeight: 20,
-  },
-  questionsSection: {
-    marginBottom: 24,
-  },
-  questionItem: {
-    padding: 16,
-    marginBottom: 12,
-  },
-  questionText: {
-    ...BodyFontStyle,
-    color: '#EAE8F0',
-    lineHeight: 20,
-  },
-  recommendationsSection: {
-    marginBottom: 24,
-  },
-  recommendationItem: {
-    padding: 16,
-    marginBottom: 12,
-  },
-  recommendationText: {
-    ...BodyFontStyle,
-    color: '#EAE8F0',
-    lineHeight: 20,
-  },
-  statsSection: {
-    marginBottom: 24,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    ...SmallFontStyle,
-    color: '#8F8C9B',
+    fontWeight: 'bold',
+    color: Colors.primary,
     marginBottom: 4,
   },
-  statValue: {
+  symbolMeaning: {
+    ...SmallFontStyle,
+    color: Colors.textSecondary,
+  },
+  listItem: {
     ...BodyFontStyle,
-    color: '#FFDDA8',
-    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 8,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingBottom: 20,
   },
   shareButton: {
     flex: 1,
-    backgroundColor: '#4A4063',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    height: 50,
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: '#595566',
+    borderColor: Colors.primary,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   shareButtonText: {
-    ...ButtonFontStyle,
-    color: '#FFDDA8',
+    ...SmallFontStyle,
+    color: Colors.primary,
+    fontWeight: 'bold',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#FFDDA8',
-    borderRadius: 12,
-    padding: 16,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FFDDA8',
   },
   saveButtonText: {
-    ...ButtonFontStyle,
-    color: '#191D2E',
+    ...SmallFontStyle,
+    color: Colors.textInverse,
+    fontWeight: 'bold',
   },
   bottomSpacer: {
     height: 40,

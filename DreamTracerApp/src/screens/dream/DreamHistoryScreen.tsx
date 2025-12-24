@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,29 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useDreamStore } from '../../stores/dreamStore'; // Assuming store handles global state, but manual fetch is cleaner for specific filtering
+import { useDreamStore } from '../../stores/dreamStore';
 import dreamService from '../../services/dreamService';
 import { Dream } from '../../types/dream';
-import AnimatedBackground from '../../components/AnimatedBackground'; // Restored
+import AnimatedBackground from '../../components/AnimatedBackground';
 import GlassView from '../../components/common/GlassView';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 import EmptyStateGraphic from '../../components/common/EmptyStateGraphic';
-import MasonryList from '../../components/common/MasonryList'; // Imported
+import MasonryList from '../../components/common/MasonryList';
 import { hapticService } from '../../services/hapticService';
-import { soundService } from '../../services/soundService'; // Imported
+import { soundService } from '../../services/soundService';
 import { 
   DreamRecordTitleStyle, 
   BodyFontStyle, 
   SmallFontStyle, 
   EmotionalSubtitleStyle,
   ButtonFontStyle,
-  DreamySubtitleStyle 
+  DreamySubtitleStyle,
+  FontWeights
 } from '../../styles/fonts';
+import Colors from '../../styles/colors';
 
 // Icons (Using Text for now if Icons not strictly verified, but assuming Ionicons available)
 // import Ionicons from 'react-native-vector-icons/Ionicons'; 
@@ -51,7 +54,41 @@ const DreamHistoryScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 10;
 
+  // Animation values
+  const fadeAnims = useRef<Animated.Value[]>([]).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  if (fadeAnims.length < dreams.length) {
+    for (let i = fadeAnims.length; i < dreams.length; i++) {
+      fadeAnims[i] = new Animated.Value(0);
+    }
+  }
+
   useEffect(() => {
+    if (dreams.length > 0) {
+      const animations = dreams.map((_: Dream, i: number) => 
+        Animated.timing(fadeAnims[i], {
+          toValue: 1,
+          duration: 400,
+          delay: (i % 10) * 100,
+          useNativeDriver: true,
+        })
+      );
+      
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        ...animations
+      ]).start();
+    }
+  }, [dreams]);
+
+  useEffect(() => {
+    soundService.play('notification');
     fetchDreams(0, true);
   }, [selectedFilter]);
 
@@ -95,7 +132,7 @@ const DreamHistoryScreen: React.FC = () => {
       if (shouldReset) {
         setDreams(newDreams);
       } else {
-        setDreams(prev => [...prev, ...newDreams]);
+        setDreams((prev: Dream[]) => [...prev, ...newDreams]);
       }
 
       setHasMore(newDreams.length === LIMIT);
@@ -121,47 +158,57 @@ const DreamHistoryScreen: React.FC = () => {
   };
 
   const renderDreamItem = (item: Dream, index: number) => {
-    // Masonry Card Style
-    // Random height variation for masonry effect (simulated by content length)
+    const fadeAnim = fadeAnims[index] || new Animated.Value(0);
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => (navigation as any).navigate('DreamAnalysis', { dreamId: item.id })}
-        style={styles.cardWrapper}
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }}
       >
-        <GlassView style={[styles.cardContent, { minHeight: item.body_text && item.body_text.length > 50 ? 200 : 160 }]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.dateText}>
-              {new Date(item.created_at).toLocaleDateString('ko-KR', { 
-                month: 'numeric', 
-                day: 'numeric'
-              })}
-            </Text>
-            {item.lucidity_level && item.lucidity_level >= 4 && (
-              <Text style={styles.lucidIcon}>✨</Text>
-            )}
-          </View>
-
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {item.title || '무제'}
-          </Text>
-
-          <Text style={styles.cardPreview} numberOfLines={4}>
-            {item.body_text}
-          </Text>
-
-          {item.emotion_tags && item.emotion_tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>#{item.emotion_tags[0]}</Text>
-              </View>
-              {item.emotion_tags.length > 1 && (
-                <Text style={styles.moreTagsText}>+{item.emotion_tags.length - 1}</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            hapticService.trigger('light');
+            (navigation as any).navigate('DreamAnalysis', { dreamId: item.id });
+          }}
+          style={styles.cardWrapper}
+        >
+          <GlassView style={[styles.cardContent, { minHeight: item.body_text && item.body_text.length > 50 ? 200 : 160 }]}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.dateText}>
+                {new Date(item.created_at).toLocaleDateString('ko-KR', { 
+                  month: 'numeric', 
+                  day: 'numeric'
+                })}
+              </Text>
+              {item.lucidity_level && item.lucidity_level >= 4 && (
+                <Text style={styles.lucidIcon}>✨</Text>
               )}
             </View>
-          )}
-        </GlassView>
-      </TouchableOpacity>
+
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.title || '무제'}
+            </Text>
+
+            <Text style={styles.cardPreview} numberOfLines={4}>
+              {item.body_text}
+            </Text>
+
+            {item.emotion_tags && item.emotion_tags.length > 0 && (
+              <View style={styles.tagsContainer}>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>#{item.emotion_tags[0]}</Text>
+                </View>
+                {item.emotion_tags.length > 1 && (
+                  <Text style={styles.moreTagsText}>+{item.emotion_tags.length - 1}</Text>
+                )}
+              </View>
+            )}
+          </GlassView>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 
@@ -220,7 +267,7 @@ const DreamHistoryScreen: React.FC = () => {
         <MasonryList
           data={dreams}
           renderItem={renderDreamItem}
-          keyExtractor={item => item.id}
+          keyExtractor={(item: Dream) => item.id}
           numColumns={2}
           contentPadding={12}
           ListHeaderComponent={renderHeader()}
@@ -251,11 +298,11 @@ const DreamHistoryScreen: React.FC = () => {
         />
         {isLoading && dreams.length === 0 && (
           <View style={styles.initialLoading}>
-             <SkeletonLoader style={{ width: '100%', height: 150, borderRadius: 16 }} />
+             <SkeletonLoader width="100%" height={150} borderRadius={16} />
              <View style={{ height: 16 }} />
-             <SkeletonLoader style={{ width: '100%', height: 150, borderRadius: 16 }} />
+             <SkeletonLoader width="100%" height={150} borderRadius={16} />
              <View style={{ height: 16 }} />
-             <SkeletonLoader style={{ width: '100%', height: 150, borderRadius: 16 }} />
+             <SkeletonLoader width="100%" height={150} borderRadius={16} />
           </View>
         )}
       </View>
@@ -277,12 +324,12 @@ const styles = StyleSheet.create({
   screenTitle: {
     ...DreamRecordTitleStyle,
     fontSize: 28,
-    color: '#FFDDA8',
+    color: Colors.primary,
     marginBottom: 4,
   },
   screenSubtitle: {
     ...EmotionalSubtitleStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     marginBottom: 20,
   },
   searchContainer: {
@@ -292,7 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 4, // TextInput has own padding
+    paddingVertical: 4,
   },
   searchIcon: {
     fontSize: 18,
@@ -301,7 +348,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     ...BodyFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     height: 48,
   },
   filterContainer: {
@@ -309,27 +356,33 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginRight: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   activeFilterChip: {
-    backgroundColor: '#FFDDA8',
-    borderColor: '#FFDDA8',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   filterText: {
     ...SmallFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textSecondary,
+    fontSize: 13,
   },
   activeFilterText: {
-    color: '#191D2E',
-    fontWeight: 'bold',
+    color: Colors.background,
+    fontWeight: '700',
   },
   cardWrapper: {
-    marginBottom: 0, // Handled by MasonryList padding
+    marginBottom: 0,
   },
   cardContent: {
     padding: 16,
@@ -343,7 +396,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     ...SmallFontStyle,
-    color: '#8F8C9B',
+    color: Colors.textSecondary,
   },
   lucidIcon: {
       fontSize: 12,
@@ -351,12 +404,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...DreamRecordTitleStyle,
     fontSize: 18,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     marginBottom: 8,
   },
   cardPreview: {
-    ...SmallFontStyle, // Smaller font for grid
-    color: '#D0CDE1',
+    ...SmallFontStyle,
+    color: 'rgba(234, 232, 240, 0.8)',
     lineHeight: 18,
     marginBottom: 12,
   },
@@ -366,18 +419,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#4A4063',
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
     fontSize: 10,
-    color: '#FFDDA8',
+    color: Colors.primary,
   },
   moreTagsText: {
       ...SmallFontStyle,
-      color: '#8F8C9B',
+      color: Colors.textSecondary,
       fontSize: 10,
       marginLeft: 4,
   },
@@ -385,38 +438,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 40,
   },
-  emptyIcon: {
-    // Removed
-  },
   emptyText: {
     ...DreamySubtitleStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     fontSize: 18,
     marginTop: 16,
   },
   emptySubText: {
     ...BodyFontStyle,
-    color: '#8F8C9B',
+    color: Colors.textSecondary,
     marginTop: 8,
     marginBottom: 32,
     textAlign: 'center',
   },
   emptyActionButton: {
-    backgroundColor: 'rgba(255, 221, 168, 0.2)', // Gold with opacity
+    backgroundColor: 'rgba(255, 221, 168, 0.2)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#FFDDA8',
+    borderColor: Colors.primary,
   },
   emptyActionText: {
     ...ButtonFontStyle,
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontSize: 14,
   },
   initialLoading: {
     position: 'absolute',
-    top: 200, // Below header approx
+    top: 200,
     left: 20,
     right: 20,
   }

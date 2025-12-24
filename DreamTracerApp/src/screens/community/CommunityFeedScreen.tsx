@@ -20,6 +20,10 @@ import {
   BodyFontStyle, 
   SmallFontStyle 
 } from '../../styles/fonts';
+import Colors from '../../styles/colors';
+import GlassView from '../../components/common/GlassView';
+import SkeletonLoader from '../../components/common/SkeletonLoader';
+import { hapticService } from '../../services/hapticService';
 
 import communityService, { FeedItem } from '../../services/communityService';
 
@@ -84,57 +88,85 @@ const CommunityFeedScreen: React.FC = () => {
     loadFeed(false);
   };
 
+  const handlePostPress = (item: FeedItem) => {
+    hapticService.trigger('light');
+    // Navigate to post detail if exists
+  };
+
+  const handleInteraction = (type: 'like' | 'comment' | 'share') => {
+    hapticService.trigger('light');
+    // Handle interaction
+  };
+
   const renderFeedItem: ListRenderItem<FeedItem> = ({ item }) => (
-    <TouchableOpacity key={item.id} style={styles.feedCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.authorContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{item.author[0]}</Text>
+    <TouchableOpacity 
+      key={item.id} 
+      activeOpacity={0.9}
+      style={styles.cardWrapper}
+      onPress={() => handlePostPress(item)}
+    >
+      <GlassView style={styles.feedCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.authorContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{item.author[0]}</Text>
+            </View>
+            <View>
+              <Text style={styles.authorName}>{item.author}</Text>
+              <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.authorName}>{item.author}</Text>
-            <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.moreButton}
+            onPress={() => hapticService.trigger('light')}
+          >
+            <Text style={styles.moreButtonText}>•••</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Text style={styles.moreButtonText}>•••</Text>
-        </TouchableOpacity>
-      </View>
 
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardContent} numberOfLines={3}>{item.content}</Text>
-      
-      {item.imageUrl && (
-        <View style={styles.imageContainer}>
-          {/* 실제 이미지 대신 플레이스홀더 뷰 사용 (네트워크 이미지 로드 문제 방지) */}
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imagePlaceholderIcon}>🌠</Text>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardContent} numberOfLines={3}>{item.content}</Text>
+        
+        {item.imageUrl && (
+          <View style={styles.imageContainer}>
+            <View style={styles.imagePlaceholder}>
+              <Text style={styles.imagePlaceholderIcon}>🌠</Text>
+            </View>
           </View>
+        )}
+
+        <View style={styles.tagsContainer}>
+          {item.tags.map((tag, index) => (
+            <View key={index} style={styles.tag}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
         </View>
-      )}
 
-      <View style={styles.tagsContainer}>
-        {item.tags.map((tag, index) => (
-          <View key={index} style={styles.tag}>
-            <Text style={styles.tagText}>#{tag}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.cardFooter}>
-        <TouchableOpacity style={styles.interactionButton}>
-          <Text style={styles.interactionIcon}>❤️</Text>
-          <Text style={styles.interactionText}>{item.likes}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.interactionButton}>
-          <Text style={styles.interactionIcon}>💬</Text>
-          <Text style={styles.interactionText}>{item.comments}</Text>
-        </TouchableOpacity>
-        <View style={styles.spacer} />
-        <TouchableOpacity style={styles.interactionButton}>
-          <Text style={styles.interactionIcon}>🔗</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.cardFooter}>
+          <TouchableOpacity 
+            style={styles.interactionButton}
+            onPress={() => handleInteraction('like')}
+          >
+            <Text style={styles.interactionIcon}>❤️</Text>
+            <Text style={styles.interactionText}>{item.likes}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.interactionButton}
+            onPress={() => handleInteraction('comment')}
+          >
+            <Text style={styles.interactionIcon}>💬</Text>
+            <Text style={styles.interactionText}>{item.comments}</Text>
+          </TouchableOpacity>
+          <View style={styles.spacer} />
+          <TouchableOpacity 
+            style={styles.interactionButton}
+            onPress={() => handleInteraction('share')}
+          >
+            <Text style={styles.interactionIcon}>🔗</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassView>
     </TouchableOpacity>
   );
 
@@ -149,7 +181,7 @@ const CommunityFeedScreen: React.FC = () => {
     if (!loadingMore) return <View style={styles.bottomSpacer} />;
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color="#FFDDA8" />
+        <ActivityIndicator size="small" color={Colors.primary} />
       </View>
     );
   };
@@ -180,7 +212,7 @@ const CommunityFeedScreen: React.FC = () => {
           ListHeaderComponent={renderHeader}
           ListFooterComponent={renderFooter}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFDDA8"/>
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary}/>
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
@@ -193,7 +225,7 @@ const CommunityFeedScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191D2E', // Night Sky Blue
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -202,19 +234,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     padding: 8,
   },
   backButtonText: {
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   headerTitle: {
     ...EmotionalTitleStyle,
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontSize: 18,
   },
   searchButton: {
@@ -228,20 +260,20 @@ const styles = StyleSheet.create({
   },
   welcomeBanner: {
     padding: 24,
-    backgroundColor: '#2d2d44',
+    backgroundColor: Colors.surface,
     marginBottom: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3d3d5c',
+    borderColor: Colors.border,
   },
   welcomeTitle: {
     ...EmotionalTitleStyle,
-    color: '#FFDDA8',
+    color: Colors.primary,
     marginBottom: 8,
   },
   welcomeSubtitle: {
     ...BodyFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
   },
   loadingContainer: {
     flex: 1,
@@ -253,13 +285,12 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     alignItems: 'center',
   },
+  cardWrapper: {
+    marginBottom: 16,
+  },
   feedCard: {
-    backgroundColor: '#2d2d44',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#3d3d5c',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -275,44 +306,44 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4A4063',
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#595566',
+    borderColor: 'rgba(167, 139, 250, 0.3)',
   },
   avatarText: {
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontWeight: 'bold',
     fontSize: 18,
   },
   authorName: {
     ...BodyFontStyle,
     fontWeight: '600',
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
   },
   date: {
     ...SmallFontStyle,
-    color: '#8F8C9B',
+    color: Colors.textSecondary,
   },
   moreButton: {
     padding: 4,
   },
   moreButtonText: {
-    color: '#8F8C9B',
+    color: Colors.textSecondary,
     fontSize: 16,
   },
   cardTitle: {
     ...BodyFontStyle,
     fontWeight: 'bold',
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontSize: 18,
     marginBottom: 8,
   },
   cardContent: {
     ...BodyFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textPrimary,
     lineHeight: 22,
     marginBottom: 12,
   },
@@ -321,13 +352,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
-    backgroundColor: '#1a1a2e',
+    backgroundColor: Colors.surface,
   },
   imagePlaceholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#3d3d5c',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   imagePlaceholderIcon: {
     fontSize: 40,
@@ -339,21 +370,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#4A4063',
+    backgroundColor: 'rgba(255, 221, 168, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
     ...SmallFontStyle,
-    color: '#EAE8F0',
+    color: Colors.primary,
     fontSize: 12,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#3d3d5c',
+    borderTopColor: Colors.border,
     paddingTop: 12,
   },
   interactionButton: {
@@ -367,7 +398,7 @@ const styles = StyleSheet.create({
   },
   interactionText: {
     ...SmallFontStyle,
-    color: '#EAE8F0',
+    color: Colors.textSecondary,
   },
   spacer: {
     flex: 1,

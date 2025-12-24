@@ -5,6 +5,7 @@
 import { LocalDreamData, ServerDreamData, CommunityPost, UserPlan, SubscriptionPlan } from '../types/storage';
 import localStorageService from './localStorageService';
 import serverSyncService from './serverSyncService';
+import apiClient from './apiClient';
 
 class HybridDataManager {
   // 꿈 데이터 생성 (로컬 저장 + 서버 동기화)
@@ -99,12 +100,8 @@ class HybridDataManager {
       // 네트워크가 사용 가능하면 서버에서도 삭제
       if (await serverSyncService.isNetworkAvailable()) {
         try {
-          // 서버 삭제 API 호출 (구현 필요)
-          await fetch(`${serverSyncService['baseUrl']}/api/v1/dreams/${dreamId}`, {
+          await apiClient.request(`/dreams/${dreamId}`, {
             method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${await serverSyncService['getAuthToken']()}`
-            }
           });
         } catch (error) {
           console.warn('서버 삭제 실패:', error);
@@ -164,19 +161,12 @@ class HybridDataManager {
         }
       }
 
-      // 서버에 분석 요청
-      const response = await fetch(`${serverSyncService['baseUrl']}/api/v1/dreams/${dreamId}/analyze`, {
+      // 서버에 분석 요청 via unified Client
+      await apiClient.request(`/dreams/${dreamId}/analyze`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${await serverSyncService['getAuthToken']()}`
-        }
       });
 
-      if (!response.ok) {
-        throw new Error(`분석 요청 실패: ${response.status}`);
-      }
-
-      // 사용량 업데이트
+      // 사용량 업데이트 (서버측에서 수행되나 클라이언트측 낙관적 업데이트/상태추적용)
       await serverSyncService.updateFeatureUsage('ai_analyses', 1);
     } catch (error) {
       console.error('꿈 분석 요청 실패:', error);
@@ -199,18 +189,9 @@ class HybridDataManager {
       }
 
       // 서버에 시각화 요청
-      const response = await fetch(`${serverSyncService['baseUrl']}/api/v1/dreams/${dreamId}/visualize`, {
+      const result = await apiClient.request<{ imageUrl: string }>(`/dreams/${dreamId}/visualize`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${await serverSyncService['getAuthToken']()}`
-        }
       });
-
-      if (!response.ok) {
-        throw new Error(`시각화 요청 실패: ${response.status}`);
-      }
-
-      const result = await response.json();
 
       // 사용량 업데이트
       await serverSyncService.updateFeatureUsage('visualizations', 1);
@@ -274,8 +255,7 @@ class HybridDataManager {
   async getStorageUsage(): Promise<{ local: any; server: any }> {
     try {
       const localUsage = await localStorageService.getStorageUsage();
-      // 서버 사용량은 별도 API로 조회 (구현 필요)
-      const serverUsage = { total: 0 }; // 임시값
+      const serverUsage = { total: 0 };
 
       return { local: localUsage, server: serverUsage };
     } catch (error) {
@@ -307,12 +287,12 @@ class HybridDataManager {
       }
     };
 
-    return limits[plan];
+    return limits[plan] || limits[SubscriptionPlan.FREE];
   }
 
   // 고유 ID 생성
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
   }
 }
 

@@ -18,18 +18,20 @@ import { useDreamStore } from '../../stores/dreamStore';
 import { useAuthStore } from '../../stores/authStore';
 import { Dream } from '../../types/dream';
 import { 
-  PersonalGreetingStyle, 
-  SpecialMessageStyle, 
   EmotionalTitleStyle, 
-  ButtonFontStyle, 
-  StatisticsStyle,
   BodyFontStyle,
   SmallFontStyle
 } from '../../styles/fonts';
 import { EmotionHeatmap, WeeklyDreamChart } from '../../components/charts';
 import GlassView from '../../components/common/GlassView';
-import MascotBubble from '../../components/mascot/MascotBubble';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
+import { MascotHeader } from '../../components/home/MascotHeader';
+import { QuickActions } from '../../components/home/QuickActions';
+import { StatsOverview } from '../../components/home/StatsOverview';
+import { hapticService } from '../../services/hapticService';
+import { soundService } from '../../services/soundService';
+import { getWeeklyChartData, getEmotionData } from '../../utils/dreamDataUtils';
+import Colors from '../../styles/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -40,18 +42,8 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   
   // Mascot State
-  const [mascotMessage, setMascotMessage] = useState('');
+  const [mascotMessage, setMascotMessage] = useState('오늘 밤에도 아름다운 꿈을 꿀 거예요! ✨');
   const [mascotMood, setMascotMood] = useState<'happy' | 'calm' | 'concerned'>('calm');
-
-  // Initial Greeting Effect
-  useEffect(() => {
-    const hour = new Date().getHours();
-    const isMorning = hour < 12;
-    setMascotMessage(isMorning 
-      ? "좋은 아침이에요! 어젯밤 꿈은 기억나시나요? 🌤️" 
-      : "오늘 하루도 고생하셨어요. 자기 전 꿈 기록, 잊지 마세요! 🌙");
-    setMascotMood(isMorning ? 'happy' : 'calm');
-  }, []);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -84,6 +76,7 @@ const HomeScreen: React.FC = () => {
           text: '로그아웃',
           style: 'destructive',
           onPress: () => {
+            hapticService.trigger('light');
             logout();
             navigate('Login');
           },
@@ -92,102 +85,33 @@ const HomeScreen: React.FC = () => {
     );
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) {
-      return '좋은 아침이에요';
-    } else if (hour < 18) {
-      return '좋은 오후예요';
-    } else {
-      return '좋은 저녁이에요';
+  const handleMascotPress = () => {
+    hapticService.trigger('success');
+    soundService.play('success');
+    const funMessages = [
+      '오늘은 어떤 꿈을 꾸셨나요? 🌟',
+      '루나가 응원하고 있어요! 💫',
+      '꿈 기록, 잊지 않으셨죠? ✨',
+      '좋은 하루 보내세요! 🌈',
+    ];
+    setMascotMessage(funMessages[Math.floor(Math.random() * funMessages.length)]);
+    setMascotMood('happy');
+    setTimeout(() => setMascotMood('calm'), 3000);
+  };
+
+  const handleDayPress = (day: any) => {
+    hapticService.trigger('light');
+    if (day.count > 0) {
+      setMascotMessage(`${day.day}요일엔 ${day.count}개의 꿈을 꾸셨네요.`);
+      setMascotMood('happy');
     }
   };
 
-  const renderQuickActions = () => (
-    <GlassView style={styles.quickActionsContainer}>
-      <Text style={styles.sectionTitle}>빠른 작업</Text>
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity
-          style={[styles.quickActionButton, styles.primaryAction]}
-          onPress={() => navigate('CreateDream')}
-        >
-          <Text style={styles.quickActionIcon}>✨</Text>
-          <Text style={styles.quickActionText}>꿈 기록</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.quickActionButton}
-          onPress={() => navigate('Insights')}
-        >
-          <Text style={styles.quickActionIcon}>📊</Text>
-          <Text style={styles.quickActionText}>인사이트</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.quickActionButton}
-          onPress={() => navigate('VisualizationGallery')}
-        >
-          <Text style={styles.quickActionIcon}>🎨</Text>
-          <Text style={styles.quickActionText}>시각화</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.quickActionButton}
-          onPress={() => navigate('CommunityFeed')}
-        >
-          <Text style={styles.quickActionIcon}>🌍</Text>
-          <Text style={styles.quickActionText}>커뮤니티</Text>
-        </TouchableOpacity>
-      </View>
-    </GlassView>
-  );
-
-  const renderLoadingState = () => (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <SkeletonLoader width={100} height={20} style={{ marginBottom: 8 }} />
-          <SkeletonLoader width={180} height={32} />
-        </View>
-        <SkeletonLoader width={40} height={40} borderRadius={20} />
-      </View>
-
-      <View style={styles.content}>
-        {/* Quick Actions Skeleton */}
-        <View style={styles.quickActionsContainer}>
-          <SkeletonLoader width={80} height={20} style={{ marginBottom: 16 }} />
-          <View style={styles.quickActionsGrid}>
-            {[1, 2, 3, 4].map(i => (
-              <SkeletonLoader key={i} width={(width - 48 - 36) / 4} height={80} borderRadius={16} />
-            ))}
-          </View>
-        </View>
-
-        {/* Stats Skeleton */}
-        <GlassView style={styles.statsContainer}>
-          <SkeletonLoader width={60} height={20} style={{ marginBottom: 16 }} />
-          <View style={styles.statsGrid}>
-            {[1, 2, 3].map(i => (
-              <View key={i} style={styles.statItem}>
-                <SkeletonLoader width={30} height={24} style={{ marginBottom: 4 }} />
-                <SkeletonLoader width={40} height={14} />
-              </View>
-            ))}
-          </View>
-        </GlassView>
-
-        {/* Chart Skeleton */}
-        <GlassView style={styles.chartSection}>
-          <SkeletonLoader width={120} height={24} style={{ marginBottom: 16 }} />
-          <SkeletonLoader width="100%" height={140} />
-        </GlassView>
-      </View>
-    </View>
-  );
-
-  if (isLoading && !refreshing && dreams.length === 0) {
-    return renderLoadingState();
-  }
+  const handleEmotionPress = (emotion: any) => {
+    hapticService.trigger('light');
+    setMascotMessage(`최근 꿈에서 '${emotion.name}' 감정을 자주 느끼셨네요!`);
+    setMascotMood('calm');
+  };
 
   const renderRecentDreams = () => (
     <GlassView style={styles.recentDreamsContainer}>
@@ -234,137 +158,49 @@ const HomeScreen: React.FC = () => {
     </GlassView>
   );
 
-  const renderStats = () => (
-    <GlassView style={styles.statsContainer}>
-      <Text style={styles.sectionTitle}>통계</Text>
-      <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{dreams.length}</Text>
-          <Text style={styles.statLabel}>총 꿈</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{recentDreams.length}</Text>
-          <Text style={styles.statLabel}>이번 주</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {dreams.filter(d => (d.lucidity_level || 0) >= 4).length}
-          </Text>
-          <Text style={styles.statLabel}>자각몽</Text>
-        </View>
+  const renderLoadingState = () => (
+    <View style={styles.container}>
+      <View style={styles.headerDummy}>
+        <SkeletonLoader width={width - 40} height={150} borderRadius={20} />
       </View>
-    </GlassView>
+      <View style={styles.contentDummy}>
+        <SkeletonLoader width={width - 40} height={100} borderRadius={20} style={{ marginBottom: 16 }} />
+        <SkeletonLoader width={width - 40} height={200} borderRadius={20} />
+      </View>
+    </View>
   );
 
-  // 주간 차트 데이터 계산
-  const getWeeklyChartData = () => {
-    const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-    const today = new Date();
-    const data = [];
-    
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      const dayDreams = dreams.filter(d => {
-        const dreamDate = new Date(d.created_at).toISOString().split('T')[0];
-        return dreamDate === dateStr;
-      });
-      
-      data.push({
-        day: DAYS[date.getDay()],
-        count: dayDreams.length,
-        lucid: dayDreams.some(d => (d.lucidity_level || 0) >= 4),
-      });
-    }
-    
-    return data;
-  };
-
-  // 감정 히트맵 데이터 계산
-  const getEmotionData = () => {
-    const emotionMap: { [key: string]: { icon: string; count: number; color: string } } = {
-      '평온': { icon: '😌', count: 0, color: '#4ECDC4' },
-      '불안': { icon: '😰', count: 0, color: '#FF6B6B' },
-      '행복': { icon: '😊', count: 0, color: '#FFD93D' },
-      '영감': { icon: '✨', count: 0, color: '#A78BFA' },
-      '슬픔': { icon: '😢', count: 0, color: '#60A5FA' },
-      '흥분': { icon: '🤩', count: 0, color: '#F472B6' },
-    };
-    
-    // 실제 구현에서는 dreams의 emotion 필드를 분석
-    // 임시로 랜덤 데이터 생성 (실제 데이터 연동 시 수정)
-    dreams.forEach(dream => {
-      const emotions = Object.keys(emotionMap);
-      const randomEmotion = emotions[Math.floor(Math.random() * emotions.length)];
-      if (emotionMap[randomEmotion]) {
-        emotionMap[randomEmotion].count++;
-      }
-    });
-    
-    const total = dreams.length || 1;
-    return Object.entries(emotionMap).map(([emotion, data]) => ({
-      emotion,
-      icon: data.icon,
-      percentage: Math.round((data.count / total) * 100),
-      color: data.color,
-    }));
-
-  };
-
-  // Interaction Handlers
-  const handleDayPress = (day: any) => {
-    if (day.count > 0) {
-      setMascotMessage(`${day.day}요일엔 ${day.count}개의 꿈을 꾸셨네요.${day.lucid ? ' 자각몽도 있었어요! ✨' : ''}`);
-      setMascotMood(day.lucid ? 'happy' : 'calm');
-    } else {
-      setMascotMessage(`${day.day}요일은 기록된 꿈이 없네요. 푹 주무셨나요? 😴`);
-      setMascotMood('calm');
-    }
-  };
-
-  const handleEmotionPress = (emotion: any) => {
-    setMascotMessage(`최근 꿈에서 '${emotion.emotion}' 감정을 ${emotion.percentage}%만큼 느끼셨군요.`);
-    setMascotMood(emotion.percentage > 30 ? 'concerned' : 'calm');
-  };
+  if (isLoading && !refreshing && dreams.length === 0) {
+    return renderLoadingState();
+  }
 
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
       }
     >
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getGreeting()}, {user?.email?.split('@')[0] || '사용자'}님</Text>
-          <MascotBubble 
-            text={mascotMessage} 
-            mood={mascotMood}
-          />
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigate('Profile')}
-          >
-            <Text style={styles.profileIcon}>👤</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <MascotHeader 
+        nickname={user?.email?.split('@')[0] || '꿈 여행자'}
+        message={mascotMessage}
+        mood={mascotMood}
+        onMascotPress={handleMascotPress}
+        onProfilePress={() => {
+          hapticService.trigger('light');
+          navigate('Profile');
+        }}
+      />
 
-      {/* 빠른 작업 */}
-      {renderQuickActions()}
+      <QuickActions onAction={(target) => navigate(target as any)} />
 
-      {/* 통계 */}
-      {renderStats()}
+      <StatsOverview dreams={dreams} recentDreamsCount={recentDreams.length} />
 
       {/* 주간 꿈 차트 */}
       <GlassView style={styles.chartSection}>
         <WeeklyDreamChart 
-          data={getWeeklyChartData()} 
+          data={getWeeklyChartData(dreams)} 
           onDayPress={handleDayPress}
         />
       </GlassView>
@@ -372,7 +208,7 @@ const HomeScreen: React.FC = () => {
       {/* 감정 히트맵 */}
       <GlassView style={styles.chartSection}>
         <EmotionHeatmap 
-          emotions={getEmotionData()} 
+          emotions={getEmotionData(dreams)} 
           onEmotionPress={handleEmotionPress}
         />
       </GlassView>
@@ -380,7 +216,6 @@ const HomeScreen: React.FC = () => {
       {/* 최근 꿈 */}
       {renderRecentDreams()}
 
-      {/* 하단 여백 */}
       <View style={styles.bottomSpacer} />
     </ScrollView>
   );
@@ -389,90 +224,27 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191D2E', // Night Sky Blue
+    backgroundColor: Colors.background,
   },
-  header: {
-    padding: 24,
-    backgroundColor: '#191D2E',
+  scrollContent: {
+    paddingBottom: 20,
   },
-  greeting: {
-    ...PersonalGreetingStyle,
-    color: '#FFDDA8', // Starlight Gold
-    marginBottom: 8,
-  },
-  subGreeting: {
-    ...SpecialMessageStyle,
-    color: '#8F8C9B', // Warm Grey 400
-    lineHeight: 22,
-  },
-  quickActionsContainer: {
-    // GlassView handles background/padding
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
-  sectionTitle: {
-    ...EmotionalTitleStyle,
-    color: '#FFDDA8',
-    marginBottom: 16,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickActionButton: {
-    width: (width - 80) / 2,
-    backgroundColor: '#2d2d44',
+  headerDummy: {
     padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#3d3d5c',
+    marginTop: 20,
   },
-  primaryAction: {
-    backgroundColor: '#FFDDA8',
-    borderColor: '#FFDDA8',
+  contentDummy: {
+    paddingHorizontal: 20,
   },
-  quickActionIcon: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  quickActionText: {
-    ...ButtonFontStyle,
-    fontSize: 14,
-    color: '#EAE8F0',
-  },
-  statsContainer: {
-    // GlassView handles background/padding
+  chartSection: {
     marginHorizontal: 16,
     marginTop: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    ...StatisticsStyle,
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFDDA8',
-  },
-  statLabel: {
-    ...StatisticsStyle,
-    color: '#8F8C9B',
-    marginTop: 4,
+    padding: 16,
   },
   recentDreamsContainer: {
-    // GlassView handles background/padding
     marginHorizontal: 16,
     marginTop: 16,
-  },
-  content: {
-    paddingBottom: 40,
+    padding: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -480,89 +252,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  sectionTitle: {
+    ...EmotionalTitleStyle,
+    color: Colors.primary,
+    fontSize: 18,
+  },
   seeAllText: {
     ...SmallFontStyle,
-    color: '#FFDDA8',
+    color: Colors.primary,
     fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 30,
   },
   emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 48,
+    marginBottom: 12,
   },
   emptyStateText: {
     ...BodyFontStyle,
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#EAE8F0',
-    marginBottom: 8,
+    color: Colors.textPrimary,
+    fontWeight: 'bold',
   },
   emptyStateSubtext: {
     ...SmallFontStyle,
-    color: '#8F8C9B',
-    marginBottom: 24,
+    color: Colors.textSecondary,
+    marginBottom: 20,
   },
   createFirstDreamButton: {
-    backgroundColor: '#FFDDA8',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 25,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   createFirstDreamButtonText: {
-    ...ButtonFontStyle,
-    color: '#191D2E',
+    color: Colors.textInverse,
+    fontWeight: 'bold',
   },
   dreamCard: {
     width: 200,
-    backgroundColor: '#2d2d44',
+    backgroundColor: Colors.surface,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#3d3d5c',
+    borderColor: Colors.border,
   },
   dreamTitle: {
     ...BodyFontStyle,
+    color: Colors.textPrimary,
     fontWeight: '600',
-    color: '#EAE8F0',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   dreamDate: {
     ...SmallFontStyle,
     fontSize: 12,
-    color: '#8F8C9B',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
   dreamPreview: {
     ...SmallFontStyle,
-    color: '#8F8C9B',
-    lineHeight: 20,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
   bottomSpacer: {
-    height: 40,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2d2d44',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3d3d5c',
-  },
-  profileIcon: {
-    fontSize: 20,
-  },
-  chartSection: {
-    marginHorizontal: 16,
+    height: 80,
   },
 });
 

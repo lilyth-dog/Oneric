@@ -16,8 +16,8 @@ import {
 } from 'react-native';
 import { useNavigationStore } from '../../stores/navigationStore';
 import { useAuthStore } from '../../stores/authStore';
+import GlassButton from '../../components/common/GlassButton';
 import socialAuthService from '../../services/socialAuthService';
-import AnimatedBackground from '../../components/AnimatedBackground';
 import GoogleIcon from '../../components/GoogleIcon';
 import NaverIcon from '../../components/NaverIcon';
 import KakaoIcon from '../../components/KakaoIcon';
@@ -97,8 +97,7 @@ const RegisterScreen: React.FC = () => {
   };
 
   return (
-    <AnimatedBackground>
-      <KeyboardAvoidingView
+    <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -162,21 +161,18 @@ const RegisterScreen: React.FC = () => {
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.registerButton, isLoading && styles.disabledButton]}
+            <GlassButton
+              title="회원가입"
               onPress={handleRegister}
-              disabled={isLoading}
-            >
-              <Text style={styles.registerButtonText}>
-                {isLoading ? '가입 중...' : '회원가입'}
-              </Text>
-            </TouchableOpacity>
+              loading={isLoading}
+              style={styles.registerButtonOverride}
+            />
 
             <TouchableOpacity
               style={styles.backButton}
               onPress={goBack}
             >
-              <Text style={styles.backButtonText}>로그인</Text>
+              <Text style={styles.backButtonText}>로그인으로 돌아가기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -229,7 +225,6 @@ const RegisterScreen: React.FC = () => {
         </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </AnimatedBackground>
   );
 };
 
@@ -285,6 +280,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     marginTop: 24,
     gap: 16,
+  },
+  registerButtonOverride: {
+    marginBottom: 8,
   },
   registerButton: {
     backgroundColor: '#FFDDA8', // Starlight Gold

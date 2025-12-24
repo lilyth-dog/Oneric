@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { EmotionalSubtitleStyle, SmallFontStyle, BodyFontStyle } from '../../styles/fonts';
 
-interface EmotionData {
+export interface EmotionData {
   emotion: string;
   icon: string;
   percentage: number;

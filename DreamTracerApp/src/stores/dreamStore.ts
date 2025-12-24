@@ -15,7 +15,7 @@ interface DreamStore {
   isUpdating: boolean;
   isDeleting: boolean;
   error: string | null;
-  
+
   // Pagination
   currentPage: number;
   totalPages: number;
@@ -60,8 +60,8 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
   fetchDreams: async (params = {}) => {
     set({ isLoading: true, error: null });
     try {
-      const response: DreamListResponse = await dreamService.getDreams(params);
-      
+      const response = await dreamService.getDreams(params);
+
       set({
         dreams: response.dreams,
         currentPage: response.page,
@@ -84,7 +84,7 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
     set({ isLoading: true, error: null });
     try {
       const dream = await dreamService.getDream(dreamId);
-      
+
       set({
         currentDream: dream,
         isLoading: false,
@@ -102,12 +102,12 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
     set({ isCreating: true, error: null });
     try {
       const newDream = await dreamService.createDream(dreamData);
-      
+
       set((state) => ({
         dreams: [newDream, ...state.dreams],
         isCreating: false,
       }));
-      
+
       return newDream;
     } catch (error) {
       set({
@@ -122,15 +122,15 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
     set({ isUpdating: true, error: null });
     try {
       const updatedDream = await dreamService.updateDream(dreamId, dreamUpdate);
-      
+
       set((state) => ({
-        dreams: state.dreams.map(dream => 
+        dreams: state.dreams.map(dream =>
           dream.id === dreamId ? updatedDream : dream
         ),
         currentDream: state.currentDream?.id === dreamId ? updatedDream : state.currentDream,
         isUpdating: false,
       }));
-      
+
       return updatedDream;
     } catch (error) {
       set({
@@ -145,7 +145,7 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
     set({ isDeleting: true, error: null });
     try {
       await dreamService.deleteDream(dreamId);
-      
+
       set((state) => ({
         dreams: state.dreams.filter(dream => dream.id !== dreamId),
         currentDream: state.currentDream?.id === dreamId ? null : state.currentDream,
@@ -164,7 +164,7 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
     set({ isLoading: true, error: null });
     try {
       const stats = await dreamService.getDreamStats();
-      
+
       set({
         dreamStats: stats,
         isLoading: false,
@@ -181,8 +181,8 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
   searchDreams: async (query: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response: DreamListResponse = await dreamService.searchDreams(query);
-      
+      const response = await dreamService.searchDreams(query);
+
       set({
         dreams: response.dreams,
         currentPage: response.page,
@@ -210,36 +210,18 @@ export const useDreamStore = create<DreamStore>((set, _get) => ({
   },
 
   getDreams: async () => {
-    set({ isLoading: true });
-    try {
-      const result = await dreamService.getDreams();
-      set({
-        dreams: result.dreams,
-        currentPage: result.page,
-        totalPages: Math.ceil(result.total_count / result.page_size),
-        hasNext: result.has_next,
-        hasPrevious: result.has_previous,
-        totalCount: result.total_count,
-        isLoading: false,
-      });
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch dreams',
-        isLoading: false 
-      });
-    }
+    const { fetchDreams } = _get();
+    return fetchDreams();
   },
 
   get recentDreams() {
     const { dreams } = _get();
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    return dreams.filter(dream => 
-      new Date(dream.created_at) >= oneWeekAgo
-    ).sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    if (!dreams.length) return [];
+
+    // Sort by date and return top 10
+    return [...dreams]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10);
   },
 
   reset: () => {

@@ -137,19 +137,7 @@ const ProfileScreen: React.FC = () => {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={() => navigate('Settings')} // This maps to AIConnectionTestScreen temporarily in App.tsx? No, Settings maps to nothing or App Settings? Wait, task.md said App Settings (AI Test) implemented. 
-            // In App.tsx switch, 'Settings' is mapped to terms? No. 
-            // Let's assume there is no Settings screen yet in App.tsx switch (it was just listed in types).
-            // Actually I should map it to AIConnectionTestScreen or create a SettingsScreen.
-            // For now, let's just make it Alert or link to AI Test.
-          >
-             {/* I will fix App.tsx to map 'Settings' to AIConnectionTestScreen for now as "App Settings" */}
-            <Text style={styles.menuIcon}>⚙️</Text>
-            <Text style={styles.menuText}>앱 설정 (AI 테스트)</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+
 
           <TouchableOpacity 
             style={styles.menuItem}
