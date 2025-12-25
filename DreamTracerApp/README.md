@@ -1,10 +1,60 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DreamTracer (꿈결) - AI Dream Analysis App
 
-# Getting Started
+DreamTracer is a React Native application that helps users record, analyze, and visualize their dreams using AI.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 🚀 Quick Start (DreamTracer Specific)
+
+### 1. Prerequisites
+- **Node.js**: >= 20.x
+- **Backend**: You need the [DreamTracer Backend](file:///c:/startup/Oneiric/DreamTracerBackend) running for full functionality.
+- **Environment**: Follow the [React Native Environment Setup](https://reactnative.dev/docs/set-up-your-environment) for Android/iOS.
+
+### 2. Backend Configuration
+By default, the app is configured to connect to a local backend:
+- **Android Emulator**: `http://10.0.2.2:8000/api/v1`
+- **iOS Simulator / Physical**: `http://localhost:8000/api/v1`
+
+To change this, edit [src/config/config.ts](file:///c:/startup/Oneiric/DreamTracerApp/src/config/config.ts).
+
+### 3. Installation
+```sh
+npm install
+# For iOS only
+cd ios && bundle install && bundle exec pod install && cd ..
+```
+
+### 4. Running the App
+```sh
+# Start Metro
+npm start
+
+# Run on Android
+npm run android
+
+# Run on iOS
+npm run ios
+```
+
+## 🛠 Features
+- **AI Analysis**: Deep insights into dream symbols and emotions.
+- **Mascot Interaction**: Luna, your AI dream guide, reacts to your dreams.
+- **Community Feed**: Share your dreams and explore others' subconscious experiences.
+- **Visualization**: AI-generated imagery based on your dream descriptions.
+
+## 📁 Project Structure
+- `src/services`: API clients and business logic (AIService, DreamService, etc.)
+- `src/components`: Reusable UI components including Premium Mystic design system.
+- `src/screens`: Main application screens (Home, Analysis, Community, etc.)
+- `src/stores`: State management using Zustand.
+- `src/styles`: Theme and typography configuration.
+
+---
+
+# React Native Default Instructions
+> **Note**: This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 ## Step 1: Start Metro
+... rest of original readme ...
 
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
